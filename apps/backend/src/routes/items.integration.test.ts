@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, afterAll, describe, expect, it } from 'vitest'
 import { sql } from 'drizzle-orm'
-import app from '../app.js'
-import { closeDbConnection, db } from '../infrastructure/db/client.js'
+import app from '../app'
+import { closeDbConnection, db } from '../infrastructure/db/client'
 
 const ensureTestTable = async () => {
   await db.execute(sql`CREATE EXTENSION IF NOT EXISTS "pgcrypto";`)

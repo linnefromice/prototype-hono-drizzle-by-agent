@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import type { Item } from 'openapi'
-import type { ItemRepository } from '../itemRepository.js'
+import type { ItemRepository } from '../itemRepository'
 
 export class MockItemRepository implements ItemRepository {
   private items: Item[] = []
