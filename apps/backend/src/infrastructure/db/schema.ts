@@ -1,4 +1,12 @@
-import { pgEnum, pgTable, text, timestamp, uuid, uniqueIndex } from 'drizzle-orm/pg-core'
+import {
+  foreignKey,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+  uniqueIndex,
+} from 'drizzle-orm/pg-core'
 
 export const conversationTypeEnum = pgEnum('conversation_type', ['direct', 'group'])
 export const participantRoleEnum = pgEnum('participant_role', ['member', 'admin'])
@@ -47,18 +55,29 @@ export const participants = pgTable(
   }),
 )
 
-export const messages = pgTable('messages', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  conversationId: uuid('conversation_id')
-    .notNull()
-    .references(() => conversations.id, { onDelete: 'cascade' }),
-  senderUserId: uuid('sender_user_id').references(() => users.id, { onDelete: 'set null' }),
-  type: messageTypeEnum('type').notNull().default('text'),
-  text: text('text'),
-  replyToMessageId: uuid('reply_to_message_id').references(() => messages.id, { onDelete: 'set null' }),
-  systemEvent: systemEventEnum('system_event'),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-})
+export const messages = pgTable(
+  'messages',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    conversationId: uuid('conversation_id')
+      .notNull()
+      .references(() => conversations.id, { onDelete: 'cascade' }),
+    senderUserId: uuid('sender_user_id').references(() => users.id, { onDelete: 'set null' }),
+    type: messageTypeEnum('type').notNull().default('text'),
+    text: text('text'),
+    replyToMessageId: uuid('reply_to_message_id'),
+    systemEvent: systemEventEnum('system_event'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  table => ({
+    replyToReference: foreignKey({
+      columns: [table.replyToMessageId],
+      foreignColumns: [table.id],
+      name: 'messages_reply_to_message_id_fkey',
+      onDelete: 'set null',
+    }),
+  }),
+)
 
 export const reactions = pgTable(
   'reactions',

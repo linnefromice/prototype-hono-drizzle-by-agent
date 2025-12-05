@@ -204,7 +204,7 @@ export class DrizzleChatRepository implements ChatRepository {
   }
 
   async addReaction(messageId: string, data: ReactionRequest): Promise<Reaction> {
-    const [reactionRow] = await this.client
+    const insertResult = await this.client
       .insert(reactions)
       .values({
         messageId,
@@ -213,6 +213,10 @@ export class DrizzleChatRepository implements ChatRepository {
       })
       .onConflictDoNothing()
       .returning()
+
+    const reactionRow: typeof reactions.$inferSelect | undefined = Array.isArray(insertResult)
+      ? insertResult[0]
+      : insertResult?.rows?.[0]
 
     if (reactionRow) {
       return mapReaction(reactionRow)
