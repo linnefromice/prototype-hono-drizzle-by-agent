@@ -48,9 +48,14 @@ jobs:
         run: npm run build
         working-directory: apps/backend
 
+      - name: Write environment file for migrations
+        run: echo "DATABASE_URL=${DATABASE_URL}" > apps/backend/.env
+
       - name: Run migrations
         run: npx drizzle-kit push
         working-directory: apps/backend
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
 
       - name: Run backend checks
         run: npm run test

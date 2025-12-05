@@ -1,13 +1,18 @@
 import { defineConfig } from 'drizzle-kit'
-import { loadEnvConfig } from './src/utils/env'
+import { config } from 'dotenv'
 
-const env = loadEnvConfig()
+// Load .env file if it exists (for local development)
+config()
+
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL environment variable is required')
+}
 
 export default defineConfig({
   schema: './src/infrastructure/db/schema.ts',
   out: './drizzle',
   dialect: 'postgresql',
   dbCredentials: {
-    connectionString: env.DATABASE_URL,
+    connectionString: process.env.DATABASE_URL,
   },
 })
