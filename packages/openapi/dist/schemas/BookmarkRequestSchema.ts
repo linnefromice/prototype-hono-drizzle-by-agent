@@ -1,7 +1,7 @@
-import { z } from 'zod'
+import { z } from "zod";
 
 export const BookmarkRequestSchema = z.object({
   userId: z.string().uuid(),
-})
+});
 
-export type BookmarkRequest = z.infer<typeof BookmarkRequestSchema>
+export type BookmarkRequest = z.infer<typeof BookmarkRequestSchema>;

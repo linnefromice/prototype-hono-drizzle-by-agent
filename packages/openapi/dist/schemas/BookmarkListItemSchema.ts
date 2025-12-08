@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from "zod";
 
 export const BookmarkListItemSchema = z.object({
   messageId: z.string().uuid(),
@@ -6,6 +6,6 @@ export const BookmarkListItemSchema = z.object({
   text: z.string().nullable().optional(),
   createdAt: z.string().datetime(),
   messageCreatedAt: z.string().datetime(),
-})
+});
 
-export type BookmarkListItem = z.infer<typeof BookmarkListItemSchema>
+export type BookmarkListItem = z.infer<typeof BookmarkListItemSchema>;

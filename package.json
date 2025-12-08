@@ -8,6 +8,10 @@
   ],
   "scripts": {
     "dev:backend": "npm run dev --workspace backend",
-    "generate:api": "npm run generate --workspace openapi"
+    "generate:api": "npm run generate --workspace openapi",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f postgres",
+    "db:reset": "docker compose down -v && docker compose up -d"
   }
 }

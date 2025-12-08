@@ -9,8 +9,52 @@ structure is ready for future frontends or shared packages under `apps/` and
 ## Prerequisites
 
 - Node.js 20+ and npm
-- Local PostgreSQL instance or cloud database for `DATABASE_URL`
+- Docker and Docker Compose (for local database)
+  - OR: Local PostgreSQL instance or cloud database for `DATABASE_URL`
 - Ability to install workspace dependencies (`npm install`)
+
+## Database Setup
+
+### Using Docker (Recommended for local development)
+
+1. Start PostgreSQL with Docker Compose:
+
+   ```bash
+   docker compose up -d
+   ```
+
+2. Verify the database is running:
+
+   ```bash
+   docker compose ps
+   ```
+
+3. Access the database UI (Adminer):
+
+   - Open http://localhost:8080 in your browser
+   - Login credentials:
+     - System: `PostgreSQL`
+     - Server: `postgres`
+     - Username: `postgres`
+     - Password: `password`
+     - Database: `app_db`
+
+4. Stop the database when not needed:
+
+   ```bash
+   docker compose down
+   ```
+
+5. To remove all data and start fresh:
+
+   ```bash
+   docker compose down -v
+   ```
+
+### Using an existing PostgreSQL instance
+
+If you prefer to use your own PostgreSQL instance, update `DATABASE_URL` in
+`apps/backend/.env` to point to your database.
 
 ## Getting started
 
@@ -24,7 +68,8 @@ structure is ready for future frontends or shared packages under `apps/` and
 
    ```bash
    cp apps/backend/.env.example apps/backend/.env
-   # Edit apps/backend/.env to point DATABASE_URL at your Postgres instance
+   # If using Docker Compose, no changes needed
+   # Otherwise, edit apps/backend/.env to point DATABASE_URL at your Postgres instance
    ```
 
 3. Generate shared API types before running the backend (required on a clean clone):
@@ -63,15 +108,38 @@ structure is ready for future frontends or shared packages under `apps/` and
 ## Database migrations
 
 Drizzle Kit reads configuration from `apps/backend/drizzle.config.ts`, which uses
-`DATABASE_URL` when present. Examples:
+`DATABASE_URL` when present.
+
+**First time setup** (after starting Docker Compose):
 
 ```bash
-# Generate SQL migrations from schema changes
-npx drizzle-kit generate --config apps/backend/drizzle.config.ts
+# Navigate to the backend directory
+cd apps/backend
 
-# Apply migrations to your database
-npx drizzle-kit push --config apps/backend/drizzle.config.ts
+# Generate initial migration files
+npx drizzle-kit generate
+
+# Apply migrations to create tables
+npx drizzle-kit push
 ```
+
+**Making schema changes**:
+
+```bash
+# 1. Update apps/backend/src/infrastructure/db/schema.ts
+# 2. Navigate to the backend directory
+cd apps/backend
+
+# 3. Generate SQL migrations from schema changes
+npx drizzle-kit generate
+
+# 4. Apply migrations to your database
+npx drizzle-kit push
+```
+
+**Note**: Drizzle Kit will automatically use the `drizzle.config.ts` file in the current
+directory. You can also run commands from the repository root by specifying the config
+path explicitly with `--config apps/backend/drizzle.config.ts`.
 
 ## Workspace layout
 
