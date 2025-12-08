@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from "zod";
 
 export const ConversationReadSchema = z.object({
   id: z.string().uuid(),
@@ -6,6 +6,6 @@ export const ConversationReadSchema = z.object({
   userId: z.string().uuid(),
   lastReadMessageId: z.string().uuid().nullable().optional(),
   updatedAt: z.string().datetime(),
-})
+});
 
-export type ConversationRead = z.infer<typeof ConversationReadSchema>
+export type ConversationRead = z.infer<typeof ConversationReadSchema>;

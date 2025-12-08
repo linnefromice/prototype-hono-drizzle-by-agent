@@ -1,7 +1,7 @@
-import { z } from 'zod'
+import { z } from "zod";
 
 export const UnbookmarkResponseSchema = z.object({
-  status: z.literal('unbookmarked'),
-})
+  status: z.literal("unbookmarked"),
+});
 
-export type UnbookmarkResponse = z.infer<typeof UnbookmarkResponseSchema>
+export type UnbookmarkResponse = z.infer<typeof UnbookmarkResponseSchema>;
