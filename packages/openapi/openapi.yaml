@@ -341,6 +341,25 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UnbookmarkResponse'
+  /users:
+    post:
+      summary: Create user (development only)
+      description: Creates a new user. Only available in development mode.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: Created user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '403':
+          description: Forbidden - only available in development mode
   /users/{userId}/bookmarks:
     get:
       summary: List bookmarks for a user
@@ -389,6 +408,17 @@ components:
       properties:
         name:
           type: string
+      required:
+        - name
+    CreateUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        avatarUrl:
+          type: string
+          nullable: true
       required:
         - name
     User:

@@ -20,6 +20,7 @@ export * from "./conversationType";
 export * from "./createConversationRequest";
 export * from "./createConversationRequestType";
 export * from "./createItemRequest";
+export * from "./createUserRequest";
 export * from "./deleteMessagesIdBookmarksParams";
 export * from "./deleteMessagesIdReactionsEmojiParams";
 export * from "./getConversationsIdMessagesParams";

@@ -15,6 +15,8 @@ const ensureTestTable = async () => {
 }
 
 beforeAll(async () => {
+  // Set NODE_ENV for tests
+  process.env.NODE_ENV = 'development'
   await ensureTestTable()
 })
 
