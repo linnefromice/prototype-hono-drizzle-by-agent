@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { CreateUserRequestSchema } from 'openapi'
+import { ZodError } from 'zod'
 import { DrizzleChatRepository } from '../repositories/drizzleChatRepository'
 import { DrizzleUserRepository } from '../repositories/drizzleUserRepository'
 import { ChatUsecase } from '../usecases/chatUsecase'
@@ -29,16 +30,20 @@ router.get('/', devOnly, async c => {
 })
 
 router.post('/', devOnly, async c => {
-  const body = await c.req.json()
-  const payload = CreateUserRequestSchema.parse(body)
-
   try {
+    const body = await c.req.json()
+    const payload = CreateUserRequestSchema.parse(body)
+
     const created = await userUsecase.createUser({
       name: payload.name,
       avatarUrl: payload.avatarUrl,
     })
     return c.json(created, 201)
   } catch (error) {
+    if (error instanceof ZodError) {
+      return c.json({ message: error.errors[0].message }, 400)
+    }
+
     if (error instanceof Error && error.message === 'User name is required') {
       return c.json({ message: error.message }, 400)
     }

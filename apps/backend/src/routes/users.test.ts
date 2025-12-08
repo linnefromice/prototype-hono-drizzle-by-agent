@@ -89,9 +89,9 @@ describe('Users API', () => {
       })
 
       expect(response.status).toBe(400)
-      await expect(response.json()).resolves.toMatchObject({
-        message: 'User name is required',
-      })
+      const json = await response.json()
+      expect(json).toHaveProperty('message')
+      expect(json.message).toContain('character')
     })
 
     it('returns 403 in production mode', async () => {
