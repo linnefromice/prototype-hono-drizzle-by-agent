@@ -142,6 +142,8 @@ npm run build
 npm run test
 ```
 
+**Note**: The `generate:api` command automatically appends TypeScript type exports to the generated Orval output using a post-generation script (`packages/openapi/scripts/post-generate.ts`). This ensures that all necessary types are available to the backend without manual intervention.
+
 ### After database schema changes
 
 When you modify `apps/backend/src/infrastructure/db/schema.ts`:

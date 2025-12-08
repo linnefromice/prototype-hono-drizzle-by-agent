@@ -4,10 +4,11 @@
   "main": "dist/index.ts",
   "types": "dist/index.ts",
   "scripts": {
-    "generate": "orval --config orval.config.ts"
+    "generate": "orval --config orval.config.ts && tsx scripts/post-generate.ts"
   },
   "devDependencies": {
-    "orval": "^7.2.0"
+    "orval": "^7.2.0",
+    "tsx": "^4.21.0"
   },
   "dependencies": {
     "zod": "^3.23.8"
