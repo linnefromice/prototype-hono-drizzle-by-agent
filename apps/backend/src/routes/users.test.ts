@@ -1,5 +1,7 @@
 import { describe, expect, it, beforeAll } from 'vitest'
 import app from '../app'
+import { expectValidZodSchema, expectValidZodSchemaArray } from '../__tests__/helpers/zodValidation'
+import { getUsersResponseItem, getUsersUserIdResponse } from 'openapi'
 
 describe('Users API', () => {
   beforeAll(() => {
@@ -26,14 +28,8 @@ describe('Users API', () => {
       expect(Array.isArray(users)).toBe(true)
       expect(users.length).toBeGreaterThan(0)
 
-      // Verify user structure
-      const user = users[0]
-      expect(user).toHaveProperty('id')
-      expect(user).toHaveProperty('name')
-      expect(user).toHaveProperty('createdAt')
-      expect(typeof user.id).toBe('string')
-      expect(typeof user.name).toBe('string')
-      expect(typeof user.createdAt).toBe('string')
+      // Zod schema validation for all users in the array
+      expectValidZodSchemaArray(getUsersResponseItem, users, 'users')
     })
 
     it('returns 403 in production mode', async () => {
@@ -65,10 +61,13 @@ describe('Users API', () => {
       expect(response.status).toBe(201)
 
       const user = await response.json()
-      expect(user).toHaveProperty('id')
+
+      // Zod schema validation
+      expectValidZodSchema(getUsersUserIdResponse, user, 'user')
+
+      // Business logic assertions
       expect(user.name).toBe('Test User')
       expect(user.avatarUrl).toBe('https://example.com/avatar.jpg')
-      expect(user).toHaveProperty('createdAt')
     })
 
     it('creates a user with only name', async () => {
@@ -83,6 +82,11 @@ describe('Users API', () => {
       expect(response.status).toBe(201)
 
       const user = await response.json()
+
+      // Zod schema validation
+      expectValidZodSchema(getUsersUserIdResponse, user, 'user')
+
+      // Business logic assertions
       expect(user.name).toBe('Test User 2')
       expect(user.avatarUrl).toBeNull()
     })
@@ -140,6 +144,11 @@ describe('Users API', () => {
       expect(response.status).toBe(200)
 
       const user = await response.json()
+
+      // Zod schema validation
+      expectValidZodSchema(getUsersUserIdResponse, user, 'user')
+
+      // Business logic assertions
       expect(user.id).toBe(createdUser.id)
       expect(user.name).toBe('Findable User')
       expect(user.avatarUrl).toBe('https://example.com/findable.jpg')

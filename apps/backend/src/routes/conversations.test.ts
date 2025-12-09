@@ -1,6 +1,16 @@
 import { describe, expect, it, beforeAll } from 'vitest'
 import { ZodError } from 'zod'
 import app from '../app'
+import { expectValidZodSchema, expectValidZodSchemaArray } from '../__tests__/helpers/zodValidation'
+import {
+  getConversationsIdResponse,
+  getConversationsResponseItem,
+  getConversationsIdMessagesResponseItem,
+  deleteConversationsIdParticipantsUserIdResponse,
+  postConversationsIdReadResponse,
+  getConversationsIdUnreadCountResponse,
+  getUsersUserIdResponse,
+} from 'openapi'
 
 describe('Conversations API', () => {
   beforeAll(() => {
@@ -35,14 +45,14 @@ describe('Conversations API', () => {
       expect(response.status).toBe(201)
 
       const conversation = await response.json()
-      expect(conversation).toHaveProperty('id')
+
+      // Zod schema validation ensures complete response structure
+      expectValidZodSchema(getConversationsIdResponse, conversation, 'conversation')
+
+      // Additional business logic assertions
       expect(conversation.type).toBe('direct')
-      // Name is undefined for direct conversations (not explicitly set)
       expect(conversation.name == null).toBe(true)
-      expect(conversation).toHaveProperty('createdAt')
       expect(conversation.participants).toHaveLength(2)
-      expect(conversation.participants[0]).toHaveProperty('id')
-      expect(conversation.participants[0]).toHaveProperty('userId')
       expect(conversation.participants[0].role).toBe('member')
     })
 
@@ -64,6 +74,11 @@ describe('Conversations API', () => {
       expect(response.status).toBe(201)
 
       const conversation = await response.json()
+
+      // Zod schema validation
+      expectValidZodSchema(getConversationsIdResponse, conversation, 'conversation')
+
+      // Business logic assertions
       expect(conversation.type).toBe('group')
       expect(conversation.name).toBe('Test Group')
       expect(conversation.participants).toHaveLength(3)
@@ -87,6 +102,11 @@ describe('Conversations API', () => {
       expect(response.status).toBe(201)
 
       const conversation = await response.json()
+
+      // Zod schema validation
+      expectValidZodSchema(getConversationsIdResponse, conversation, 'conversation')
+
+      // Business logic assertions
       expect(conversation.type).toBe('group')
       expect(conversation.name).toBe('My Group Chat')
       expect(conversation.participants).toHaveLength(3)
@@ -131,12 +151,8 @@ describe('Conversations API', () => {
       expect(Array.isArray(conversations)).toBe(true)
       expect(conversations.length).toBeGreaterThan(0)
 
-      const conversation = conversations[0]
-      expect(conversation).toHaveProperty('id')
-      expect(conversation).toHaveProperty('type')
-      expect(conversation).toHaveProperty('createdAt')
-      expect(conversation).toHaveProperty('participants')
-      expect(Array.isArray(conversation.participants)).toBe(true)
+      // Zod schema validation for all conversations in the array
+      expectValidZodSchemaArray(getConversationsResponseItem, conversations, 'conversations')
     })
 
     it('returns 400 when userId is not provided', async () => {
@@ -183,9 +199,13 @@ describe('Conversations API', () => {
       expect(response.status).toBe(200)
 
       const conversation = await response.json()
+
+      // Zod schema validation
+      expectValidZodSchema(getConversationsIdResponse, conversation, 'conversation')
+
+      // Business logic assertions
       expect(conversation.id).toBe(createdConversation.id)
       expect(conversation.type).toBe('direct')
-      expect(conversation).toHaveProperty('participants')
       expect(conversation.participants).toHaveLength(2)
     })
 
@@ -231,11 +251,14 @@ describe('Conversations API', () => {
       expect(response.status).toBe(201)
 
       const participant = await response.json()
-      expect(participant).toHaveProperty('id')
+
+      // Zod schema validation
+      expectValidZodSchema(deleteConversationsIdParticipantsUserIdResponse, participant, 'participant')
+
+      // Business logic assertions
       expect(participant.conversationId).toBe(conversation.id)
       expect(participant.userId).toBe(user3.id)
       expect(participant.role).toBe('member')
-      expect(participant).toHaveProperty('joinedAt')
     })
 
     it('creates a system message when participant is added', async () => {
@@ -411,13 +434,8 @@ describe('Conversations API', () => {
       expect(Array.isArray(messages)).toBe(true)
       expect(messages.length).toBeGreaterThanOrEqual(2)
 
-      const message = messages[0]
-      expect(message).toHaveProperty('id')
-      expect(message).toHaveProperty('conversationId')
-      expect(message).toHaveProperty('senderUserId')
-      expect(message).toHaveProperty('type')
-      expect(message).toHaveProperty('text')
-      expect(message).toHaveProperty('createdAt')
+      // Zod schema validation for all messages in the array
+      expectValidZodSchemaArray(getConversationsIdMessagesResponseItem, messages, 'messages')
     })
 
     it('respects limit parameter for pagination', async () => {
@@ -572,12 +590,15 @@ describe('Conversations API', () => {
       expect(response.status).toBe(201)
 
       const message = await response.json()
-      expect(message).toHaveProperty('id')
+
+      // Zod schema validation
+      expectValidZodSchema(getConversationsIdMessagesResponseItem, message, 'message')
+
+      // Business logic assertions
       expect(message.conversationId).toBe(conversation.id)
       expect(message.senderUserId).toBe(user1.id)
       expect(message.type).toBe('text')
       expect(message.text).toBe('Hello, world!')
-      expect(message).toHaveProperty('createdAt')
     })
 
     it('sends a reply message with replyToMessageId', async () => {
@@ -708,12 +729,15 @@ describe('Conversations API', () => {
       expect(response.status).toBe(200)
 
       const result = await response.json()
+
+      // Zod schema validation
+      expectValidZodSchema(postConversationsIdReadResponse, result, 'read response')
+
+      // Business logic assertions
       expect(result.status).toBe('ok')
-      expect(result.read).toHaveProperty('id')
       expect(result.read.conversationId).toBe(conversation.id)
       expect(result.read.userId).toBe(user1.id)
       expect(result.read.lastReadMessageId).toBe(message.id)
-      expect(result.read).toHaveProperty('updatedAt')
     })
 
     it('returns 400 for non-existent message', async () => {
@@ -793,8 +817,11 @@ describe('Conversations API', () => {
       expect(response.status).toBe(200)
 
       const result = await response.json()
-      expect(result).toHaveProperty('unreadCount')
-      expect(typeof result.unreadCount).toBe('number')
+
+      // Zod schema validation
+      expectValidZodSchema(getConversationsIdUnreadCountResponse, result, 'unread count response')
+
+      // Business logic assertions
       expect(result.unreadCount).toBeGreaterThanOrEqual(0)
     })
 
