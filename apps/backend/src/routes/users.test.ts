@@ -1,12 +1,29 @@
-import { describe, expect, it, beforeAll } from 'vitest'
+import { describe, expect, it, beforeAll, afterAll, beforeEach } from 'vitest'
 import app from '../app'
 import { expectValidZodSchema, expectValidZodSchemaArray } from '../__tests__/helpers/zodValidation'
 import { expectMatchesSnapshot } from '../__tests__/helpers/snapshotHelpers'
 import { getUsersResponseItem, getUsersUserIdResponse } from 'openapi'
+import { db, closeDbConnection, sqlite } from '../infrastructure/db/client'
+import { users, conversations, participants, messages, reactions, conversationReads, messageBookmarks } from '../infrastructure/db/schema'
 
 describe('Users API', () => {
   beforeAll(() => {
     process.env.NODE_ENV = 'development'
+  })
+
+  beforeEach(async () => {
+    // Clean up database between tests (foreign key order matters)
+    await db.delete(messageBookmarks)
+    await db.delete(reactions)
+    await db.delete(conversationReads)
+    await db.delete(messages)
+    await db.delete(participants)
+    await db.delete(conversations)
+    await db.delete(users)
+  })
+
+  afterAll(async () => {
+    await closeDbConnection()
   })
 
   describe('GET /users', () => {

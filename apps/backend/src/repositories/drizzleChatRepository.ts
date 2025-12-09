@@ -31,8 +31,9 @@ const mapParticipant = (row: typeof participants.$inferSelect): Participant => (
   conversationId: row.conversationId,
   userId: row.userId,
   role: row.role,
-  joinedAt: row.joinedAt.toISOString(),
-  leftAt: row.leftAt ? row.leftAt.toISOString() : undefined,
+  // SQLite stores dates as ISO 8601 strings
+  joinedAt: row.joinedAt,
+  leftAt: row.leftAt ?? undefined,
 })
 
 const mapConversation = (
@@ -42,7 +43,8 @@ const mapConversation = (
   id: row.id,
   type: row.type,
   name: row.name ?? undefined,
-  createdAt: row.createdAt.toISOString(),
+  // SQLite stores dates as ISO 8601 strings
+  createdAt: row.createdAt,
   participants: participantList,
 })
 
@@ -54,7 +56,8 @@ const mapMessage = (row: typeof messages.$inferSelect): Message => ({
   text: row.text ?? undefined,
   replyToMessageId: row.replyToMessageId ?? undefined,
   systemEvent: row.systemEvent ?? undefined,
-  createdAt: row.createdAt.toISOString(),
+  // SQLite stores dates as ISO 8601 strings
+  createdAt: row.createdAt,
 })
 
 const mapReaction = (row: typeof reactions.$inferSelect): Reaction => ({
@@ -62,7 +65,8 @@ const mapReaction = (row: typeof reactions.$inferSelect): Reaction => ({
   messageId: row.messageId,
   userId: row.userId,
   emoji: row.emoji,
-  createdAt: row.createdAt.toISOString(),
+  // SQLite stores dates as ISO 8601 strings
+  createdAt: row.createdAt,
 })
 
 const mapConversationRead = (row: typeof conversationReads.$inferSelect): ConversationRead => ({
@@ -70,14 +74,16 @@ const mapConversationRead = (row: typeof conversationReads.$inferSelect): Conver
   conversationId: row.conversationId,
   userId: row.userId,
   lastReadMessageId: row.lastReadMessageId ?? undefined,
-  updatedAt: row.updatedAt.toISOString(),
+  // SQLite stores dates as ISO 8601 strings
+  updatedAt: row.updatedAt,
 })
 
 const mapBookmark = (row: typeof messageBookmarks.$inferSelect): Bookmark => ({
   id: row.id,
   messageId: row.messageId,
   userId: row.userId,
-  createdAt: row.createdAt.toISOString(),
+  // SQLite stores dates as ISO 8601 strings
+  createdAt: row.createdAt,
 })
 
 export class DrizzleChatRepository implements ChatRepository {
@@ -183,7 +189,7 @@ export class DrizzleChatRepository implements ChatRepository {
   async markParticipantLeft(conversationId: string, userId: string): Promise<Participant | null> {
     const [participantRow] = await this.client
       .update(participants)
-      .set({ leftAt: new Date() })
+      .set({ leftAt: new Date().toISOString() })
       .where(and(eq(participants.conversationId, conversationId), eq(participants.userId, userId)))
       .returning()
 
@@ -194,7 +200,7 @@ export class DrizzleChatRepository implements ChatRepository {
     conversationId: string,
     payload: SendMessageRequest & { type: 'text' | 'system' },
   ): Promise<Message> {
-    const [messageRow] = await this.client
+    const result = await this.client
       .insert(messages)
       .values({
         conversationId,
@@ -206,6 +212,7 @@ export class DrizzleChatRepository implements ChatRepository {
       })
       .returning()
 
+    const [messageRow] = result as Array<typeof messages.$inferSelect>
     return mapMessage(messageRow)
   }
 
@@ -217,7 +224,7 @@ export class DrizzleChatRepository implements ChatRepository {
       .from(messages)
       .where(
         before
-          ? and(eq(messages.conversationId, conversationId), lt(messages.createdAt, new Date(before)))
+          ? and(eq(messages.conversationId, conversationId), lt(messages.createdAt, before))
           : eq(messages.conversationId, conversationId),
       )
       .orderBy(desc(messages.createdAt))
@@ -281,7 +288,7 @@ export class DrizzleChatRepository implements ChatRepository {
       })
       .onConflictDoUpdate({
         target: [conversationReads.conversationId, conversationReads.userId],
-        set: { lastReadMessageId: data.lastReadMessageId, updatedAt: new Date() },
+        set: { lastReadMessageId: data.lastReadMessageId, updatedAt: new Date().toISOString() },
       })
       .returning()
 
@@ -362,12 +369,15 @@ export class DrizzleChatRepository implements ChatRepository {
       .where(eq(messageBookmarks.userId, userId))
       .orderBy(desc(messageBookmarks.createdAt))
 
-    return rows.map(row => ({
-      messageId: row.message.id,
-      conversationId: row.message.conversationId,
-      text: row.message.text ?? undefined,
-      createdAt: row.bookmark.createdAt.toISOString(),
-      messageCreatedAt: row.message.createdAt.toISOString(),
-    }))
+    return rows
+      .filter(row => row.message !== null)
+      .map(row => ({
+        messageId: row.message!.id,
+        conversationId: row.message!.conversationId,
+        text: row.message!.text ?? undefined,
+        // SQLite stores dates as ISO 8601 strings
+        createdAt: row.bookmark.createdAt,
+        messageCreatedAt: row.message!.createdAt,
+      }))
   }
 }

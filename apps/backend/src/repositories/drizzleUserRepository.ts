@@ -16,10 +16,8 @@ export class DrizzleUserRepository implements UserRepository {
       })
       .returning()
 
-    return {
-      ...created,
-      createdAt: created.createdAt.toISOString(),
-    }
+    // SQLite stores createdAt as ISO 8601 string, no need to convert
+    return created
   }
 
   async findById(id: string): Promise<User | null> {
@@ -29,18 +27,14 @@ export class DrizzleUserRepository implements UserRepository {
       return null
     }
 
-    return {
-      ...found,
-      createdAt: found.createdAt.toISOString(),
-    }
+    // SQLite stores createdAt as ISO 8601 string, no need to convert
+    return found
   }
 
   async listAll(): Promise<User[]> {
     const allUsers = await this.client.select().from(users)
 
-    return allUsers.map((user) => ({
-      ...user,
-      createdAt: user.createdAt.toISOString(),
-    }))
+    // SQLite stores createdAt as ISO 8601 string, no need to convert
+    return allUsers
   }
 }

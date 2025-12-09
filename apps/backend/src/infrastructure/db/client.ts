@@ -1,15 +1,24 @@
-import { drizzle } from 'drizzle-orm/node-postgres'
-import { Pool } from 'pg'
+import { drizzle } from 'drizzle-orm/better-sqlite3'
+import Database from 'better-sqlite3'
+import * as schema from './schema'
 import { loadEnvConfig } from '../../utils/env'
 
 const env = loadEnvConfig()
 
-export const pool = new Pool({
-  connectionString: env.DATABASE_URL,
-})
+// Determine the database file path
+// Use in-memory database for tests, file-based for development
+const dbPath = process.env.NODE_ENV === 'test' ? ':memory:' : 'dev.db'
 
-export const db = drizzle(pool)
+const sqlite = new Database(dbPath)
 
-export const closeDbConnection = async () => {
-  await pool.end()
+// Enable foreign key constraints (important for SQLite)
+sqlite.pragma('foreign_keys = ON')
+
+export const db = drizzle(sqlite, { schema })
+
+export const closeDbConnection = () => {
+  sqlite.close()
 }
+
+// Export the raw sqlite instance for direct SQL operations if needed
+export { sqlite }
