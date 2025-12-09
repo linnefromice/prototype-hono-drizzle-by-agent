@@ -1,0 +1,413 @@
+import { describe, expect, it, beforeAll } from 'vitest'
+import app from '../app'
+
+describe('Messages API', () => {
+  beforeAll(() => {
+    process.env.NODE_ENV = 'development'
+  })
+
+  // Helper function to create test users
+  async function createUser(name: string) {
+    const response = await app.request('/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    })
+    return response.json()
+  }
+
+  // Helper function to create a conversation
+  async function createConversation(participantIds: string[], name?: string) {
+    const response = await app.request('/conversations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: participantIds.length === 2 ? 'direct' : 'group',
+        name: participantIds.length > 2 ? name || 'Test Group' : undefined,
+        participantIds,
+      }),
+    })
+    return response.json()
+  }
+
+  // Helper function to send a message
+  async function sendMessage(conversationId: string, senderUserId: string, text: string) {
+    const response = await app.request(`/conversations/${conversationId}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        senderUserId,
+        text,
+      }),
+    })
+    return response.json()
+  }
+
+  describe('POST /messages/:id/reactions', () => {
+    it('adds a reaction to a message', async () => {
+      const user1 = await createUser('User 1')
+      const user2 = await createUser('User 2')
+
+      // Create conversation and message
+      const conversation = await createConversation([user1.id, user2.id])
+      const message = await sendMessage(conversation.id, user1.id, 'Hello!')
+
+      // Add reaction
+      const response = await app.request(`/messages/${message.id}/reactions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user2.id,
+          emoji: '👍',
+        }),
+      })
+
+      expect(response.status).toBe(201)
+
+      const reaction = await response.json()
+      expect(reaction).toHaveProperty('id')
+      expect(reaction.messageId).toBe(message.id)
+      expect(reaction.userId).toBe(user2.id)
+      expect(reaction.emoji).toBe('👍')
+      expect(reaction).toHaveProperty('createdAt')
+    })
+
+    it('allows multiple users to react with the same emoji', async () => {
+      const user1 = await createUser('User 1')
+      const user2 = await createUser('User 2')
+      const user3 = await createUser('User 3')
+
+      const conversation = await createConversation([user1.id, user2.id, user3.id])
+      const message = await sendMessage(conversation.id, user1.id, 'Great news!')
+
+      // User 2 reacts
+      const response1 = await app.request(`/messages/${message.id}/reactions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user2.id,
+          emoji: '🎉',
+        }),
+      })
+
+      // User 3 reacts with same emoji
+      const response2 = await app.request(`/messages/${message.id}/reactions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user3.id,
+          emoji: '🎉',
+        }),
+      })
+
+      expect(response1.status).toBe(201)
+      expect(response2.status).toBe(201)
+
+      const reaction1 = await response1.json()
+      const reaction2 = await response2.json()
+
+      expect(reaction1.userId).toBe(user2.id)
+      expect(reaction2.userId).toBe(user3.id)
+      expect(reaction1.emoji).toBe('🎉')
+      expect(reaction2.emoji).toBe('🎉')
+    })
+
+    it('returns 404 for non-existent message', async () => {
+      const user = await createUser('User 1')
+
+      const response = await app.request('/messages/00000000-0000-0000-0000-000000000000/reactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          emoji: '👍',
+        }),
+      })
+
+      expect(response.status).toBe(404)
+      await expect(response.json()).resolves.toMatchObject({
+        message: 'Message not found',
+      })
+    })
+  })
+
+  describe('DELETE /messages/:id/reactions/:emoji', () => {
+    it('removes a reaction from a message', async () => {
+      const user1 = await createUser('User 1')
+      const user2 = await createUser('User 2')
+
+      const conversation = await createConversation([user1.id, user2.id])
+      const message = await sendMessage(conversation.id, user1.id, 'Test message')
+
+      // Add reaction
+      await app.request(`/messages/${message.id}/reactions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user2.id,
+          emoji: '❤️',
+        }),
+      })
+
+      // Remove reaction
+      const response = await app.request(
+        `/messages/${message.id}/reactions/${encodeURIComponent('❤️')}?userId=${user2.id}`,
+        {
+          method: 'DELETE',
+        }
+      )
+
+      expect(response.status).toBe(200)
+
+      const deletedReaction = await response.json()
+      expect(deletedReaction.messageId).toBe(message.id)
+      expect(deletedReaction.userId).toBe(user2.id)
+      expect(deletedReaction.emoji).toBe('❤️')
+    })
+
+    it('returns 400 when userId is not provided', async () => {
+      const user1 = await createUser('User 1')
+      const user2 = await createUser('User 2')
+
+      const conversation = await createConversation([user1.id, user2.id])
+      const message = await sendMessage(conversation.id, user1.id, 'Test')
+
+      // Add reaction first
+      await app.request(`/messages/${message.id}/reactions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user2.id,
+          emoji: '👍',
+        }),
+      })
+
+      // Try to remove without userId
+      const response = await app.request(
+        `/messages/${message.id}/reactions/${encodeURIComponent('👍')}`,
+        {
+          method: 'DELETE',
+        }
+      )
+
+      expect(response.status).toBe(400)
+    })
+
+    it('returns 404 for non-existent reaction', async () => {
+      const user1 = await createUser('User 1')
+      const user2 = await createUser('User 2')
+
+      const conversation = await createConversation([user1.id, user2.id])
+      const message = await sendMessage(conversation.id, user1.id, 'Test')
+
+      // Try to remove reaction that doesn't exist
+      const response = await app.request(
+        `/messages/${message.id}/reactions/${encodeURIComponent('😀')}?userId=${user2.id}`,
+        {
+          method: 'DELETE',
+        }
+      )
+
+      expect(response.status).toBe(404)
+    })
+  })
+
+  describe('POST /messages/:id/bookmarks', () => {
+    it('bookmarks a message', async () => {
+      const user1 = await createUser('User 1')
+      const user2 = await createUser('User 2')
+
+      const conversation = await createConversation([user1.id, user2.id])
+      const message = await sendMessage(conversation.id, user1.id, 'Important message')
+
+      // Bookmark the message
+      const response = await app.request(`/messages/${message.id}/bookmarks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user2.id,
+        }),
+      })
+
+      expect(response.status).toBe(201)
+
+      const result = await response.json()
+      expect(result.status).toBe('bookmarked')
+      expect(result.bookmark).toHaveProperty('id')
+      expect(result.bookmark.messageId).toBe(message.id)
+      expect(result.bookmark.userId).toBe(user2.id)
+      expect(result.bookmark).toHaveProperty('createdAt')
+    })
+
+    it('allows the same message to be bookmarked by different users', async () => {
+      const user1 = await createUser('User 1')
+      const user2 = await createUser('User 2')
+      const user3 = await createUser('User 3')
+
+      const conversation = await createConversation([user1.id, user2.id, user3.id])
+      const message = await sendMessage(conversation.id, user1.id, 'Shared important info')
+
+      // User 2 bookmarks
+      const response1 = await app.request(`/messages/${message.id}/bookmarks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user2.id,
+        }),
+      })
+
+      // User 3 bookmarks
+      const response2 = await app.request(`/messages/${message.id}/bookmarks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user3.id,
+        }),
+      })
+
+      expect(response1.status).toBe(201)
+      expect(response2.status).toBe(201)
+
+      const result1 = await response1.json()
+      const result2 = await response2.json()
+
+      expect(result1.bookmark.userId).toBe(user2.id)
+      expect(result2.bookmark.userId).toBe(user3.id)
+      expect(result1.bookmark.messageId).toBe(message.id)
+      expect(result2.bookmark.messageId).toBe(message.id)
+    })
+
+    it('returns 404 for non-existent message', async () => {
+      const user = await createUser('User 1')
+
+      const response = await app.request('/messages/00000000-0000-0000-0000-000000000000/bookmarks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+        }),
+      })
+
+      expect(response.status).toBe(404)
+      await expect(response.json()).resolves.toMatchObject({
+        message: 'Message not found',
+      })
+    })
+  })
+
+  describe('DELETE /messages/:id/bookmarks', () => {
+    it('removes a bookmark from a message', async () => {
+      const user1 = await createUser('User 1')
+      const user2 = await createUser('User 2')
+
+      const conversation = await createConversation([user1.id, user2.id])
+      const message = await sendMessage(conversation.id, user1.id, 'Bookmarked message')
+
+      // Add bookmark
+      await app.request(`/messages/${message.id}/bookmarks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user2.id,
+        }),
+      })
+
+      // Remove bookmark
+      const response = await app.request(
+        `/messages/${message.id}/bookmarks?userId=${user2.id}`,
+        {
+          method: 'DELETE',
+        }
+      )
+
+      expect(response.status).toBe(200)
+
+      const result = await response.json()
+      expect(result.status).toBe('unbookmarked')
+    })
+
+    it('returns 400 when userId is not provided', async () => {
+      const user1 = await createUser('User 1')
+      const user2 = await createUser('User 2')
+
+      const conversation = await createConversation([user1.id, user2.id])
+      const message = await sendMessage(conversation.id, user1.id, 'Test')
+
+      const response = await app.request(`/messages/${message.id}/bookmarks`, {
+        method: 'DELETE',
+      })
+
+      expect(response.status).toBe(400)
+    })
+
+    it('returns 404 for non-existent bookmark', async () => {
+      const user1 = await createUser('User 1')
+      const user2 = await createUser('User 2')
+
+      const conversation = await createConversation([user1.id, user2.id])
+      const message = await sendMessage(conversation.id, user1.id, 'Test')
+
+      // Try to remove bookmark that doesn't exist
+      const response = await app.request(
+        `/messages/${message.id}/bookmarks?userId=${user2.id}`,
+        {
+          method: 'DELETE',
+        }
+      )
+
+      expect(response.status).toBe(404)
+    })
+  })
+
+  describe('GET /users/:userId/bookmarks', () => {
+    it('returns list of bookmarks for a user', async () => {
+      const user1 = await createUser('User 1')
+      const user2 = await createUser('User 2')
+
+      const conversation = await createConversation([user1.id, user2.id])
+      const message1 = await sendMessage(conversation.id, user1.id, 'First bookmark')
+      const message2 = await sendMessage(conversation.id, user1.id, 'Second bookmark')
+
+      // Add bookmarks
+      await app.request(`/messages/${message1.id}/bookmarks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user2.id }),
+      })
+
+      await app.request(`/messages/${message2.id}/bookmarks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user2.id }),
+      })
+
+      // Get bookmarks list
+      const response = await app.request(`/users/${user2.id}/bookmarks`)
+
+      expect(response.status).toBe(200)
+
+      const bookmarks = await response.json()
+      expect(Array.isArray(bookmarks)).toBe(true)
+      expect(bookmarks.length).toBeGreaterThanOrEqual(2)
+
+      const bookmark = bookmarks[0]
+      expect(bookmark).toHaveProperty('messageId')
+      expect(bookmark).toHaveProperty('conversationId')
+      expect(bookmark).toHaveProperty('text')
+      expect(bookmark).toHaveProperty('createdAt')
+      expect(bookmark).toHaveProperty('messageCreatedAt')
+    })
+
+    it('returns empty array when user has no bookmarks', async () => {
+      const user = await createUser('User Without Bookmarks')
+
+      const response = await app.request(`/users/${user.id}/bookmarks`)
+
+      expect(response.status).toBe(200)
+
+      const bookmarks = await response.json()
+      expect(Array.isArray(bookmarks)).toBe(true)
+      expect(bookmarks.length).toBe(0)
+    })
+  })
+})
