@@ -13,21 +13,22 @@ import {
   getUsersUserIdResponse,
 } from 'openapi'
 import { db, closeDbConnection, sqlite } from '../infrastructure/db/client'
+import { users, conversations as conversationsTable, participants, messages, reactions, conversationReads, messageBookmarks } from '../infrastructure/db/schema'
 
 describe('Conversations API', () => {
   beforeAll(() => {
     process.env.NODE_ENV = 'development'
   })
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Clean up database between tests (foreign key order matters)
-    sqlite.exec('DELETE FROM message_bookmarks')
-    sqlite.exec('DELETE FROM reactions')
-    sqlite.exec('DELETE FROM conversation_reads')
-    sqlite.exec('DELETE FROM messages')
-    sqlite.exec('DELETE FROM participants')
-    sqlite.exec('DELETE FROM conversations')
-    sqlite.exec('DELETE FROM users')
+    await db.delete(messageBookmarks)
+    await db.delete(reactions)
+    await db.delete(conversationReads)
+    await db.delete(messages)
+    await db.delete(participants)
+    await db.delete(conversationsTable)
+    await db.delete(users)
   })
 
   afterAll(async () => {
