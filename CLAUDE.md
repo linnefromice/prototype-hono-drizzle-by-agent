@@ -20,3 +20,21 @@ Context to provide in prompts:
 When requesting updates, favor small, incremental steps and ask Claude to summarize the
 tests it ran. For documentation requests, prefer short sections with bullet lists and
 shell commands in fenced `bash` blocks.
+
+## Command execution rules
+
+**Do NOT execute the following commands unless explicitly requested by the user:**
+
+- Git operations that modify the repository:
+  - `git commit`, `git push`, `git merge`, `git rebase`, `git tag`, etc.
+- GitHub operations:
+  - `gh pr create`, `gh issue create`, `gh release create`, etc.
+- Infrastructure operations that deploy or modify remote resources:
+  - `wrangler deploy`, `wrangler publish`, `wrangler d1 execute --remote`, etc.
+  - `npm run wrangler:deploy`, `npm run d1:*:remote`, etc.
+
+**Allowed operations without explicit permission:**
+
+- Reading operations: `git status`, `git diff`, `git log`, `gh pr view`, etc.
+- Local development: `npm run dev:backend`, `npm test`, `npm run build`, etc.
+- Local database operations: `npm run d1:*:local`, etc.
