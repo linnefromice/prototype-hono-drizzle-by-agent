@@ -1,13 +1,13 @@
 import { serve } from '@hono/node-server'
 import app from './app'
 import { loadEnvConfig } from './utils/env'
-import { seedDevelopmentUsers } from './infrastructure/db/seeds/users'
+import { runSeeds } from './infrastructure/db/seeds/runner'
 
 const env = loadEnvConfig()
 
 // Run seeds in development mode
 async function startServer() {
-  await seedDevelopmentUsers()
+  await runSeeds()
 
   serve({
     fetch: app.fetch,
