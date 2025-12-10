@@ -8,8 +8,14 @@ import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 type DbClient = DrizzleD1Database<any> | BetterSQLite3Database<any>
 
 export class DrizzleUserRepository implements UserRepository {
-  constructor(private readonly client?: DbClient) {
-    // Client will be injected from context in Workers environment
+  private readonly client: DbClient
+
+  constructor(client?: DbClient) {
+    // Client must be provided (will be injected from context)
+    if (!client) {
+      throw new Error('Database client is required')
+    }
+    this.client = client
   }
 
   async create(data: { name: string; avatarUrl?: string | null }): Promise<User> {

@@ -3,9 +3,9 @@ import { BookmarkRequestSchema, ReactionRequestSchema } from 'openapi'
 import { DrizzleChatRepository } from '../repositories/drizzleChatRepository'
 import { ChatUsecase } from '../usecases/chatUsecase'
 import { HttpError } from '../utils/errors'
+import { getDbClient } from '../utils/dbClient'
 
 const router = new Hono()
-const chatUsecase = new ChatUsecase(new DrizzleChatRepository())
 
 const handleError = (error: unknown, c: any) => {
   if (error instanceof HttpError) {
@@ -20,6 +20,8 @@ router.post('/:id/reactions', async c => {
   const payload = ReactionRequestSchema.parse(await c.req.json())
 
   try {
+    const db = await getDbClient(c)
+    const chatUsecase = new ChatUsecase(new DrizzleChatRepository(db))
     const reaction = await chatUsecase.addReaction(messageId, payload)
     return c.json(reaction, 201)
   } catch (error) {
@@ -37,6 +39,8 @@ router.delete('/:id/reactions/:emoji', async c => {
   }
 
   try {
+    const db = await getDbClient(c)
+    const chatUsecase = new ChatUsecase(new DrizzleChatRepository(db))
     const reaction = await chatUsecase.removeReaction(messageId, emoji, userId)
     return c.json(reaction)
   } catch (error) {
@@ -49,6 +53,8 @@ router.post('/:id/bookmarks', async c => {
   const payload = BookmarkRequestSchema.parse(await c.req.json())
 
   try {
+    const db = await getDbClient(c)
+    const chatUsecase = new ChatUsecase(new DrizzleChatRepository(db))
     const bookmark = await chatUsecase.addBookmark(messageId, payload)
     return c.json({ status: 'bookmarked', bookmark }, 201)
   } catch (error) {
@@ -65,6 +71,8 @@ router.delete('/:id/bookmarks', async c => {
   }
 
   try {
+    const db = await getDbClient(c)
+    const chatUsecase = new ChatUsecase(new DrizzleChatRepository(db))
     await chatUsecase.removeBookmark(messageId, userId)
     return c.json({ status: 'unbookmarked' })
   } catch (error) {

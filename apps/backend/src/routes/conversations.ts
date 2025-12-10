@@ -28,6 +28,8 @@ const handleError = (error: unknown, c: any) => {
 router.get('/', async c => {
   const userId = c.req.query('userId')
   try {
+    const db = await getDbClient(c)
+    const chatUsecase = new ChatUsecase(new DrizzleChatRepository(db))
     const conversations = await chatUsecase.listConversationsForUser(userId ?? '')
     return c.json(conversations)
   } catch (error) {
@@ -37,6 +39,8 @@ router.get('/', async c => {
 
 router.post('/', async c => {
   try {
+    const db = await getDbClient(c)
+    const chatUsecase = new ChatUsecase(new DrizzleChatRepository(db))
     const payload = CreateConversationRequestSchema.parse(await c.req.json())
     const created = await chatUsecase.createConversation(payload)
     return c.json(created, 201)
@@ -48,6 +52,8 @@ router.post('/', async c => {
 router.get('/:id', async c => {
   const id = c.req.param('id')
   try {
+    const db = await getDbClient(c)
+    const chatUsecase = new ChatUsecase(new DrizzleChatRepository(db))
     const conversation = await chatUsecase.getConversation(id)
     return c.json(conversation)
   } catch (error) {
@@ -59,6 +65,8 @@ router.post('/:id/participants', async c => {
   const conversationId = c.req.param('id')
 
   try {
+    const db = await getDbClient(c)
+    const chatUsecase = new ChatUsecase(new DrizzleChatRepository(db))
     const payload = AddParticipantRequestSchema.parse(await c.req.json())
     const participant = await chatUsecase.addParticipant(conversationId, payload)
     await chatUsecase.createSystemMessage(conversationId, {
@@ -76,6 +84,8 @@ router.delete('/:id/participants/:userId', async c => {
   const conversationId = c.req.param('id')
   const userId = c.req.param('userId')
   try {
+    const db = await getDbClient(c)
+    const chatUsecase = new ChatUsecase(new DrizzleChatRepository(db))
     const participant = await chatUsecase.markParticipantLeft(conversationId, userId)
     return c.json(participant)
   } catch (error) {
@@ -92,6 +102,8 @@ router.get('/:id/messages', async c => {
   const limit = parsedLimit && !Number.isNaN(parsedLimit) ? parsedLimit : undefined
 
   try {
+    const db = await getDbClient(c)
+    const chatUsecase = new ChatUsecase(new DrizzleChatRepository(db))
     const messages = await chatUsecase.listMessages(conversationId, userId ?? '', { before, limit })
     return c.json(messages)
   } catch (error) {
@@ -103,6 +115,8 @@ router.post('/:id/messages', async c => {
   const conversationId = c.req.param('id')
 
   try {
+    const db = await getDbClient(c)
+    const chatUsecase = new ChatUsecase(new DrizzleChatRepository(db))
     const payload = SendMessageRequestSchema.parse(await c.req.json())
     const created = await chatUsecase.sendMessage(conversationId, payload)
     return c.json(created, 201)
@@ -115,6 +129,8 @@ router.post('/:id/read', async c => {
   const conversationId = c.req.param('id')
 
   try {
+    const db = await getDbClient(c)
+    const chatUsecase = new ChatUsecase(new DrizzleChatRepository(db))
     const payload = UpdateConversationReadRequestSchema.parse(await c.req.json())
     const read = await chatUsecase.markConversationRead(conversationId, payload)
     return c.json({ status: 'ok', read })
@@ -132,6 +148,8 @@ router.get('/:id/unread-count', async c => {
   }
 
   try {
+    const db = await getDbClient(c)
+    const chatUsecase = new ChatUsecase(new DrizzleChatRepository(db))
     const unreadCount = await chatUsecase.countUnread(conversationId, userId)
     return c.json({ unreadCount })
   } catch (error) {
