@@ -11,6 +11,7 @@ export default defineConfig({
       { text: 'Home', link: '/' },
       { text: 'API Reference', link: '/api/' },
       { text: 'Snapshots', link: '/snapshots/' },
+      { text: 'Guides', link: '/guides/' },
     ],
 
     sidebar: {
@@ -33,6 +34,14 @@ export default defineConfig({
             { text: 'Users Snapshots', link: '/snapshots/users' },
             { text: 'Conversations Snapshots', link: '/snapshots/conversations' },
             { text: 'Messages Snapshots', link: '/snapshots/messages' },
+          ],
+        },
+      ],
+      '/guides/': [
+        {
+          text: 'Guides',
+          items: [
+            { text: 'GitHub Pages Setup', link: '/guides/GITHUB_PAGES_SETUP' },
           ],
         },
       ],
