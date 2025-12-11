@@ -15,7 +15,8 @@ import type {
   SendMessageRequest,
   UpdateConversationReadRequest,
 } from 'openapi'
-import { db } from '../infrastructure/db/client'
+import type { DrizzleD1Database } from 'drizzle-orm/d1'
+import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import {
   conversationReads,
   conversations,
@@ -86,8 +87,18 @@ const mapBookmark = (row: typeof messageBookmarks.$inferSelect): Bookmark => ({
   createdAt: row.createdAt,
 })
 
+type DbClient = DrizzleD1Database<any> | BetterSQLite3Database<any>
+
 export class DrizzleChatRepository implements ChatRepository {
-  constructor(private readonly client = db) {}
+  private readonly client: DbClient
+
+  constructor(client?: DbClient) {
+    // Client must be provided (will be injected from context)
+    if (!client) {
+      throw new Error('Database client is required')
+    }
+    this.client = client
+  }
 
   async createConversation(data: CreateConversationRequest): Promise<ConversationDetail> {
     const [conversationRow] = await this.client
@@ -130,13 +141,13 @@ export class DrizzleChatRepository implements ChatRepository {
 
   async listConversationsForUser(userId: string): Promise<ConversationDetail[]> {
     const membershipRows = await this.client
-      .select({ conversation: conversations })
+      .select()
       .from(participants)
       .innerJoin(conversations, eq(participants.conversationId, conversations.id))
       .where(eq(participants.userId, userId))
       .orderBy(desc(conversations.createdAt))
 
-    const conversationIds = membershipRows.map(row => row.conversation.id)
+    const conversationIds = membershipRows.map(row => row.conversations.id)
 
     if (conversationIds.length === 0) {
       return []
@@ -155,7 +166,7 @@ export class DrizzleChatRepository implements ChatRepository {
     }, new Map())
 
     return membershipRows.map(row =>
-      mapConversation(row.conversation, participantMap.get(row.conversation.id) ?? []),
+      mapConversation(row.conversations, participantMap.get(row.conversations.id) ?? []),
     )
   }
 
@@ -306,7 +317,7 @@ export class DrizzleChatRepository implements ChatRepository {
 
     if (readRow?.lastReadMessageId) {
       const [lastReadMessage] = await this.client
-        .select({ createdAt: messages.createdAt })
+        .select()
         .from(messages)
         .where(eq(messages.id, readRow.lastReadMessageId))
         .limit(1)
@@ -317,12 +328,12 @@ export class DrizzleChatRepository implements ChatRepository {
         }
     }
 
-    const [result] = await this.client
-      .select({ value: count() })
+    const results = await this.client
+      .select()
       .from(messages)
       .where(predicate)
 
-    return Number(result?.value ?? 0)
+    return results.length
   }
 
   async addBookmark(messageId: string, data: BookmarkRequest): Promise<Bookmark> {
@@ -363,21 +374,21 @@ export class DrizzleChatRepository implements ChatRepository {
 
   async listBookmarks(userId: string): Promise<BookmarkListItem[]> {
     const rows = await this.client
-      .select({ bookmark: messageBookmarks, message: messages })
+      .select()
       .from(messageBookmarks)
       .innerJoin(messages, eq(messageBookmarks.messageId, messages.id))
       .where(eq(messageBookmarks.userId, userId))
       .orderBy(desc(messageBookmarks.createdAt))
 
     return rows
-      .filter(row => row.message !== null)
+      .filter(row => row.messages !== null)
       .map(row => ({
-        messageId: row.message!.id,
-        conversationId: row.message!.conversationId,
-        text: row.message!.text ?? undefined,
+        messageId: row.messages!.id,
+        conversationId: row.messages!.conversationId,
+        text: row.messages!.text ?? undefined,
         // SQLite stores dates as ISO 8601 strings
-        createdAt: row.bookmark.createdAt,
-        messageCreatedAt: row.message!.createdAt,
+        createdAt: row.message_bookmarks.createdAt,
+        messageCreatedAt: row.messages!.createdAt,
       }))
   }
 }
