@@ -9,6 +9,7 @@ const systemEvents = ['join', 'leave'] as const
 
 export const users = sqliteTable('users', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  idAlias: text('id_alias').notNull().unique(),
   name: text('name').notNull(),
   avatarUrl: text('avatar_url'),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),

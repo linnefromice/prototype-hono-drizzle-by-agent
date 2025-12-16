@@ -18,10 +18,17 @@ export class DrizzleUserRepository implements UserRepository {
     this.client = client
   }
 
-  async create(data: { name: string; avatarUrl?: string | null }): Promise<User> {
+  async create(data: { idAlias: string; name: string; avatarUrl?: string | null }): Promise<User> {
+    // Validate idAlias availability before insertion
+    const available = await this.isIdAliasAvailable(data.idAlias)
+    if (!available) {
+      throw new Error(`ID Alias "${data.idAlias}" is already in use`)
+    }
+
     const [created] = await this.client
       .insert(users)
       .values({
+        idAlias: data.idAlias,
         name: data.name,
         avatarUrl: data.avatarUrl || null,
       })
@@ -42,10 +49,24 @@ export class DrizzleUserRepository implements UserRepository {
     return found
   }
 
+  async findByIdAlias(idAlias: string): Promise<User | null> {
+    const [found] = await this.client
+      .select()
+      .from(users)
+      .where(eq(users.idAlias, idAlias))
+
+    return found || null
+  }
+
   async listAll(): Promise<User[]> {
     const allUsers = await this.client.select().from(users)
 
     // SQLite stores createdAt as ISO 8601 string, no need to convert
     return allUsers
+  }
+
+  async isIdAliasAvailable(idAlias: string): Promise<boolean> {
+    const existing = await this.findByIdAlias(idAlias)
+    return existing === null
   }
 }

@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeAll, afterAll, beforeEach } from 'vitest'
+import { describe, expect, it, beforeAll, afterAll, beforeEach, vi } from 'vitest'
 import { ZodError } from 'zod'
 import app from '../app'
 import { expectValidZodSchema, expectValidZodSchemaArray } from '../__tests__/helpers/zodValidation'
@@ -14,10 +14,15 @@ import {
 } from 'openapi'
 import { db, closeDbConnection, sqlite } from '../infrastructure/db/client'
 import { users, conversations as conversationsTable, participants, messages, reactions, conversationReads, messageBookmarks } from '../infrastructure/db/schema'
+import { setupTestDatabase } from '../__tests__/helpers/dbSetup'
 
 describe('Conversations API', () => {
-  beforeAll(() => {
+  beforeAll(async () => {
     process.env.NODE_ENV = 'development'
+    await setupTestDatabase()
+    // Use fake timers for deterministic timestamps
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2025-01-01T00:00:00.000Z'))
   })
 
   beforeEach(async () => {
@@ -32,15 +37,16 @@ describe('Conversations API', () => {
   })
 
   afterAll(async () => {
+    vi.useRealTimers()
     await closeDbConnection()
   })
 
   // Helper function to create test users
-  async function createUser(name: string, avatarUrl?: string) {
+  async function createUser(name: string, idAlias: string, avatarUrl?: string) {
     const response = await app.request('/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, avatarUrl }),
+      body: JSON.stringify({ name, idAlias, avatarUrl }),
     })
     return response.json()
   }
@@ -48,8 +54,8 @@ describe('Conversations API', () => {
   describe('POST /conversations', () => {
     it('creates a direct conversation with 2 participants', async () => {
       // Create test users
-      const user1 = await createUser('User 1')
-      const user2 = await createUser('User 2')
+      const user1 = await createUser('User 1', 'user1')
+      const user2 = await createUser('User 2', 'user2')
 
       const response = await app.request('/conversations', {
         method: 'POST',
@@ -78,9 +84,9 @@ describe('Conversations API', () => {
     })
 
     it('creates a group conversation with name and 3+ participants', async () => {
-      const user1 = await createUser('User 1')
-      const user2 = await createUser('User 2')
-      const user3 = await createUser('User 3')
+      const user1 = await createUser('User 1', 'user1')
+      const user2 = await createUser('User 2', 'user2')
+      const user3 = await createUser('User 3', 'user3')
 
       const response = await app.request('/conversations', {
         method: 'POST',
@@ -109,9 +115,9 @@ describe('Conversations API', () => {
     })
 
     it('creates a group conversation with a name', async () => {
-      const user1 = await createUser('User 1')
-      const user2 = await createUser('User 2')
-      const user3 = await createUser('User 3')
+      const user1 = await createUser('User 1', 'user1')
+      const user2 = await createUser('User 2', 'user2')
+      const user3 = await createUser('User 3', 'user3')
 
       const response = await app.request('/conversations', {
         method: 'POST',
@@ -154,8 +160,8 @@ describe('Conversations API', () => {
 
   describe('GET /conversations', () => {
     it('returns list of conversations for a user', async () => {
-      const user1 = await createUser('User 1')
-      const user2 = await createUser('User 2')
+      const user1 = await createUser('User 1', 'user1')
+      const user2 = await createUser('User 2', 'user2')
 
       // Create a conversation first
       await app.request('/conversations', {
@@ -188,7 +194,7 @@ describe('Conversations API', () => {
     })
 
     it('returns empty array when user has no conversations', async () => {
-      const user = await createUser('Lonely User')
+      const user = await createUser('Lonely User', 'lonely-user')
 
       const response = await app.request(`/conversations?userId=${user.id}`)
 
@@ -202,8 +208,8 @@ describe('Conversations API', () => {
 
   describe('GET /conversations/:id', () => {
     it('returns conversation detail with participants', async () => {
-      const user1 = await createUser('User 1')
-      const user2 = await createUser('User 2')
+      const user1 = await createUser('User 1', 'user1')
+      const user2 = await createUser('User 2', 'user2')
 
       // Create a conversation
       const createResponse = await app.request('/conversations', {
@@ -245,9 +251,9 @@ describe('Conversations API', () => {
 
   describe('POST /conversations/:id/participants', () => {
     it('adds a new participant to a conversation', async () => {
-      const user1 = await createUser('User 1')
-      const user2 = await createUser('User 2')
-      const user3 = await createUser('User 3')
+      const user1 = await createUser('User 1', 'user1')
+      const user2 = await createUser('User 2', 'user2')
+      const user3 = await createUser('User 3', 'user3')
 
       // Create a conversation
       const createResponse = await app.request('/conversations', {
@@ -286,9 +292,9 @@ describe('Conversations API', () => {
     })
 
     it('creates a system message when participant is added', async () => {
-      const user1 = await createUser('User 1')
-      const user2 = await createUser('User 2')
-      const user3 = await createUser('User 3')
+      const user1 = await createUser('User 1', 'user1')
+      const user2 = await createUser('User 2', 'user2')
+      const user3 = await createUser('User 3', 'user3')
 
       // Create a conversation
       const createResponse = await app.request('/conversations', {
@@ -329,7 +335,7 @@ describe('Conversations API', () => {
     })
 
     it('returns 404 for non-existent conversation', async () => {
-      const user = await createUser('User 1')
+      const user = await createUser('User 1', 'user1')
 
       const response = await app.request(
         '/conversations/00000000-0000-0000-0000-000000000000/participants',
@@ -349,9 +355,9 @@ describe('Conversations API', () => {
 
   describe('DELETE /conversations/:id/participants/:userId', () => {
     it('removes a participant from conversation', async () => {
-      const user1 = await createUser('User 1')
-      const user2 = await createUser('User 2')
-      const user3 = await createUser('User 3')
+      const user1 = await createUser('User 1', 'user1')
+      const user2 = await createUser('User 2', 'user2')
+      const user3 = await createUser('User 3', 'user3')
 
       // Create a conversation
       const createResponse = await app.request('/conversations', {
@@ -384,8 +390,8 @@ describe('Conversations API', () => {
     })
 
     it('returns 404 for non-existent participant', async () => {
-      const user1 = await createUser('User 1')
-      const user2 = await createUser('User 2')
+      const user1 = await createUser('User 1', 'user1')
+      const user2 = await createUser('User 2', 'user2')
 
       // Create a conversation
       const createResponse = await app.request('/conversations', {
@@ -413,8 +419,8 @@ describe('Conversations API', () => {
 
   describe('GET /conversations/:id/messages', () => {
     it('returns list of messages in a conversation', async () => {
-      const user1 = await createUser('User 1')
-      const user2 = await createUser('User 2')
+      const user1 = await createUser('User 1', 'user1')
+      const user2 = await createUser('User 2', 'user2')
 
       // Create a conversation
       const createResponse = await app.request('/conversations', {
@@ -463,8 +469,8 @@ describe('Conversations API', () => {
     })
 
     it('respects limit parameter for pagination', async () => {
-      const user1 = await createUser('User 1')
-      const user2 = await createUser('User 2')
+      const user1 = await createUser('User 1', 'user1')
+      const user2 = await createUser('User 2', 'user2')
 
       // Create a conversation
       const createResponse = await app.request('/conversations', {
@@ -502,8 +508,8 @@ describe('Conversations API', () => {
     })
 
     it('supports pagination with before parameter', async () => {
-      const user1 = await createUser('User 1')
-      const user2 = await createUser('User 2')
+      const user1 = await createUser('User 1', 'user1')
+      const user2 = await createUser('User 2', 'user2')
 
       // Create a conversation
       const createResponse = await app.request('/conversations', {
@@ -556,9 +562,9 @@ describe('Conversations API', () => {
     })
 
     it('returns 403 when user is not a participant', async () => {
-      const user1 = await createUser('User 1')
-      const user2 = await createUser('User 2')
-      const user3 = await createUser('User 3')
+      const user1 = await createUser('User 1', 'user1')
+      const user2 = await createUser('User 2', 'user2')
+      const user3 = await createUser('User 3', 'user3')
 
       // Create a conversation between user1 and user2
       const createResponse = await app.request('/conversations', {
@@ -586,8 +592,8 @@ describe('Conversations API', () => {
 
   describe('POST /conversations/:id/messages', () => {
     it('sends a text message to a conversation', async () => {
-      const user1 = await createUser('User 1')
-      const user2 = await createUser('User 2')
+      const user1 = await createUser('User 1', 'user1')
+      const user2 = await createUser('User 2', 'user2')
 
       // Create a conversation
       const createResponse = await app.request('/conversations', {
@@ -629,8 +635,8 @@ describe('Conversations API', () => {
     })
 
     it('sends a reply message with replyToMessageId', async () => {
-      const user1 = await createUser('User 1')
-      const user2 = await createUser('User 2')
+      const user1 = await createUser('User 1', 'user1')
+      const user2 = await createUser('User 2', 'user2')
 
       // Create a conversation
       const createResponse = await app.request('/conversations', {
@@ -678,9 +684,9 @@ describe('Conversations API', () => {
     })
 
     it('returns 403 when user is not a participant', async () => {
-      const user1 = await createUser('User 1')
-      const user2 = await createUser('User 2')
-      const user3 = await createUser('User 3')
+      const user1 = await createUser('User 1', 'user1')
+      const user2 = await createUser('User 2', 'user2')
+      const user3 = await createUser('User 3', 'user3')
 
       // Create a conversation between user1 and user2
       const createResponse = await app.request('/conversations', {
@@ -713,8 +719,8 @@ describe('Conversations API', () => {
 
   describe('POST /conversations/:id/read', () => {
     it('updates the last read message position', async () => {
-      const user1 = await createUser('User 1')
-      const user2 = await createUser('User 2')
+      const user1 = await createUser('User 1', 'user1')
+      const user2 = await createUser('User 2', 'user2')
 
       // Create a conversation
       const createResponse = await app.request('/conversations', {
@@ -768,8 +774,8 @@ describe('Conversations API', () => {
     })
 
     it('returns 400 for non-existent message', async () => {
-      const user1 = await createUser('User 1')
-      const user2 = await createUser('User 2')
+      const user1 = await createUser('User 1', 'user1')
+      const user2 = await createUser('User 2', 'user2')
 
       // Create a conversation
       const createResponse = await app.request('/conversations', {
@@ -802,8 +808,8 @@ describe('Conversations API', () => {
 
   describe('GET /conversations/:id/unread-count', () => {
     it('returns the unread message count', async () => {
-      const user1 = await createUser('User 1')
-      const user2 = await createUser('User 2')
+      const user1 = await createUser('User 1', 'user1')
+      const user2 = await createUser('User 2', 'user2')
 
       // Create a conversation
       const createResponse = await app.request('/conversations', {
@@ -853,8 +859,8 @@ describe('Conversations API', () => {
     })
 
     it('returns total message count when no read position is set', async () => {
-      const user1 = await createUser('User 1')
-      const user2 = await createUser('User 2')
+      const user1 = await createUser('User 1', 'user1')
+      const user2 = await createUser('User 2', 'user2')
 
       // Create a conversation
       const createResponse = await app.request('/conversations', {

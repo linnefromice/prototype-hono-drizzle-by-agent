@@ -5,10 +5,12 @@ import { expectMatchesSnapshot } from '../__tests__/helpers/snapshotHelpers'
 import { getUsersResponseItem, getUsersUserIdResponse } from 'openapi'
 import { db, closeDbConnection, sqlite } from '../infrastructure/db/client'
 import { users, conversations, participants, messages, reactions, conversationReads, messageBookmarks } from '../infrastructure/db/schema'
+import { setupTestDatabase } from '../__tests__/helpers/dbSetup'
 
 describe('Users API', () => {
-  beforeAll(() => {
+  beforeAll(async () => {
     process.env.NODE_ENV = 'development'
+    await setupTestDatabase()
   })
 
   beforeEach(async () => {
@@ -33,6 +35,7 @@ describe('Users API', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          idAlias: 'test-user-list',
           name: 'Test User for List',
           avatarUrl: 'https://example.com/test.jpg',
         }),
@@ -71,6 +74,7 @@ describe('Users API', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          idAlias: 'test-user',
           name: 'Test User',
           avatarUrl: 'https://example.com/avatar.jpg',
         }),
@@ -96,6 +100,7 @@ describe('Users API', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          idAlias: 'test-user-2',
           name: 'Test User 2',
         }),
       })
@@ -120,6 +125,7 @@ describe('Users API', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          idAlias: 'empty-name',
           name: '',
         }),
       })
@@ -138,6 +144,7 @@ describe('Users API', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          idAlias: 'test-user-prod',
           name: 'Test User',
         }),
       })
@@ -155,6 +162,7 @@ describe('Users API', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          idAlias: 'findable-user',
           name: 'Findable User',
           avatarUrl: 'https://example.com/findable.jpg',
         }),

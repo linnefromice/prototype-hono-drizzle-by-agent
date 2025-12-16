@@ -24,17 +24,28 @@ import {
   messages,
   participants,
   reactions,
+  users,
 } from '../infrastructure/db/schema'
 import type { ChatRepository, MessageQueryOptions } from './chatRepository'
 
-const mapParticipant = (row: typeof participants.$inferSelect): Participant => ({
-  id: row.id,
-  conversationId: row.conversationId,
-  userId: row.userId,
-  role: row.role,
+const mapParticipant = (
+  participantRow: typeof participants.$inferSelect,
+  userRow: typeof users.$inferSelect,
+): Participant => ({
+  id: participantRow.id,
+  conversationId: participantRow.conversationId,
+  userId: participantRow.userId,
+  role: participantRow.role,
   // SQLite stores dates as ISO 8601 strings
-  joinedAt: row.joinedAt,
-  leftAt: row.leftAt ?? undefined,
+  joinedAt: participantRow.joinedAt,
+  leftAt: participantRow.leftAt ?? undefined,
+  user: {
+    id: userRow.id,
+    idAlias: userRow.idAlias,
+    name: userRow.name,
+    avatarUrl: userRow.avatarUrl ?? undefined,
+    createdAt: userRow.createdAt,
+  },
 })
 
 const mapConversation = (
@@ -115,11 +126,28 @@ export class DrizzleChatRepository implements ChatRepository {
       role: 'member' as const,
     }))
 
-    const participantRows = participantsPayload.length
-      ? await this.client.insert(participants).values(participantsPayload).returning()
-      : []
+    if (!participantsPayload.length) {
+      return mapConversation(conversationRow, [])
+    }
 
-    return mapConversation(conversationRow, participantRows.map(mapParticipant))
+    await this.client.insert(participants).values(participantsPayload)
+
+    const participantWithUserRows = await this.client
+      .select()
+      .from(participants)
+      .innerJoin(users, eq(participants.userId, users.id))
+      .where(eq(participants.conversationId, conversationRow.id))
+
+    // Order participants by the original participantIds array order
+    const participantMap = new Map(
+      participantWithUserRows.map(row => [row.participants.userId, row])
+    )
+    const participantList = data.participantIds
+      .map(userId => participantMap.get(userId))
+      .filter((row): row is NonNullable<typeof row> => row !== undefined)
+      .map(row => mapParticipant(row.participants, row.users))
+
+    return mapConversation(conversationRow, participantList)
   }
 
   async getConversation(conversationId: string): Promise<ConversationDetail | null> {
@@ -131,12 +159,18 @@ export class DrizzleChatRepository implements ChatRepository {
 
     if (!conversationRow) return null
 
-    const participantRows = await this.client
+    const participantWithUserRows = await this.client
       .select()
       .from(participants)
+      .innerJoin(users, eq(participants.userId, users.id))
       .where(eq(participants.conversationId, conversationId))
+      .orderBy(participants.id)
 
-    return mapConversation(conversationRow, participantRows.map(mapParticipant))
+    const participantList = participantWithUserRows.map(row =>
+      mapParticipant(row.participants, row.users),
+    )
+
+    return mapConversation(conversationRow, participantList)
   }
 
   async listConversationsForUser(userId: string): Promise<ConversationDetail[]> {
@@ -153,17 +187,22 @@ export class DrizzleChatRepository implements ChatRepository {
       return []
     }
 
-    const participantRows = await this.client
+    const participantWithUserRows = await this.client
       .select()
       .from(participants)
+      .innerJoin(users, eq(participants.userId, users.id))
       .where(inArray(participants.conversationId, conversationIds))
+      .orderBy(participants.id)
 
-    const participantMap = participantRows.reduce<Map<string, Participant[]>>((acc, row) => {
-      const list = acc.get(row.conversationId) ?? []
-      list.push(mapParticipant(row))
-      acc.set(row.conversationId, list)
-      return acc
-    }, new Map())
+    const participantMap = participantWithUserRows.reduce<Map<string, Participant[]>>(
+      (acc, row) => {
+        const list = acc.get(row.participants.conversationId) ?? []
+        list.push(mapParticipant(row.participants, row.users))
+        acc.set(row.participants.conversationId, list)
+        return acc
+      },
+      new Map(),
+    )
 
     return membershipRows.map(row =>
       mapConversation(row.conversations, participantMap.get(row.conversations.id) ?? []),
@@ -171,7 +210,7 @@ export class DrizzleChatRepository implements ChatRepository {
   }
 
   async addParticipant(conversationId: string, data: AddParticipantRequest): Promise<Participant> {
-    const [participantRow] = await this.client
+    await this.client
       .insert(participants)
       .values({
         conversationId,
@@ -182,29 +221,46 @@ export class DrizzleChatRepository implements ChatRepository {
         target: [participants.conversationId, participants.userId],
         set: { leftAt: null, role: data.role ?? 'member' },
       })
-      .returning()
 
-    return mapParticipant(participantRow)
+    const [result] = await this.client
+      .select()
+      .from(participants)
+      .innerJoin(users, eq(participants.userId, users.id))
+      .where(and(eq(participants.conversationId, conversationId), eq(participants.userId, data.userId)))
+      .limit(1)
+
+    if (!result) {
+      throw new Error('Failed to add participant')
+    }
+
+    return mapParticipant(result.participants, result.users)
   }
 
   async findParticipant(conversationId: string, userId: string): Promise<Participant | null> {
-    const [participantRow] = await this.client
+    const [result] = await this.client
       .select()
       .from(participants)
+      .innerJoin(users, eq(participants.userId, users.id))
       .where(and(eq(participants.conversationId, conversationId), eq(participants.userId, userId)))
       .limit(1)
 
-    return participantRow ? mapParticipant(participantRow) : null
+    return result ? mapParticipant(result.participants, result.users) : null
   }
 
   async markParticipantLeft(conversationId: string, userId: string): Promise<Participant | null> {
-    const [participantRow] = await this.client
+    await this.client
       .update(participants)
       .set({ leftAt: new Date().toISOString() })
       .where(and(eq(participants.conversationId, conversationId), eq(participants.userId, userId)))
-      .returning()
 
-    return participantRow ? mapParticipant(participantRow) : null
+    const [result] = await this.client
+      .select()
+      .from(participants)
+      .innerJoin(users, eq(participants.userId, users.id))
+      .where(and(eq(participants.conversationId, conversationId), eq(participants.userId, userId)))
+      .limit(1)
+
+    return result ? mapParticipant(result.participants, result.users) : null
   }
 
   async createMessage(

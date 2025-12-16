@@ -14,6 +14,7 @@ describe('UserUsecase', () => {
   describe('createUser', () => {
     it('creates a user with name and avatarUrl successfully', async () => {
       const user = await usecase.createUser({
+        idAlias: 'johndoe',
         name: 'John Doe',
         avatarUrl: 'https://example.com/avatar.jpg',
       })
@@ -30,6 +31,7 @@ describe('UserUsecase', () => {
 
     it('creates a user with only name (no avatarUrl)', async () => {
       const user = await usecase.createUser({
+        idAlias: 'janesmith',
         name: 'Jane Smith',
       })
 
@@ -40,6 +42,7 @@ describe('UserUsecase', () => {
 
     it('trims whitespace from user name', async () => {
       const user = await usecase.createUser({
+        idAlias: 'trimmed',
         name: '  Trimmed Name  ',
       })
 
@@ -49,6 +52,7 @@ describe('UserUsecase', () => {
     it('throws an error when name is empty string', async () => {
       await expect(
         usecase.createUser({
+          idAlias: 'empty',
           name: '',
         })
       ).rejects.toThrow('User name is required')
@@ -57,6 +61,7 @@ describe('UserUsecase', () => {
     it('throws an error when name is only whitespace', async () => {
       await expect(
         usecase.createUser({
+          idAlias: 'whitespace',
           name: '   ',
         })
       ).rejects.toThrow('User name is required')
@@ -64,6 +69,7 @@ describe('UserUsecase', () => {
 
     it('handles null avatarUrl', async () => {
       const user = await usecase.createUser({
+        idAlias: 'no-avatar',
         name: 'User Without Avatar',
         avatarUrl: null,
       })
@@ -76,6 +82,7 @@ describe('UserUsecase', () => {
   describe('getUserById', () => {
     it('returns user when found', async () => {
       const created = await usecase.createUser({
+        idAlias: 'johndoe-find',
         name: 'John Doe',
         avatarUrl: 'https://example.com/avatar.jpg',
       })
@@ -103,9 +110,9 @@ describe('UserUsecase', () => {
     })
 
     it('returns all users when users exist', async () => {
-      const user1 = await usecase.createUser({ name: 'Alice' })
-      const user2 = await usecase.createUser({ name: 'Bob' })
-      const user3 = await usecase.createUser({ name: 'Carol' })
+      const user1 = await usecase.createUser({ idAlias: 'alice', name: 'Alice' })
+      const user2 = await usecase.createUser({ idAlias: 'bob', name: 'Bob' })
+      const user3 = await usecase.createUser({ idAlias: 'carol', name: 'Carol' })
 
       const users = await usecase.listAllUsers()
 
@@ -120,6 +127,7 @@ describe('UserUsecase', () => {
 
     it('returns users with all fields populated', async () => {
       await usecase.createUser({
+        idAlias: 'testuser',
         name: 'Test User',
         avatarUrl: 'https://example.com/avatar.jpg',
       })

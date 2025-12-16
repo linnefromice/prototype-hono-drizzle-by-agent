@@ -47,10 +47,29 @@ router.post('/', devOnly, async c => {
     const payload = CreateUserRequestSchema.parse(body)
 
     const created = await userUsecase.createUser({
+      idAlias: payload.idAlias,
       name: payload.name,
       avatarUrl: payload.avatarUrl,
     })
     return c.json(created, 201)
+  } catch (error) {
+    return handleError(error, c)
+  }
+})
+
+router.post('/login', async c => {
+  try {
+    const db = await getDbClient(c)
+    const userUsecase = new UserUsecase(new DrizzleUserRepository(db))
+    const body = await c.req.json()
+    const { idAlias } = body
+
+    if (!idAlias || typeof idAlias !== 'string') {
+      return c.json({ message: 'idAlias is required' }, 400)
+    }
+
+    const user = await userUsecase.getUserByIdAlias(idAlias)
+    return c.json(user)
   } catch (error) {
     return handleError(error, c)
   }

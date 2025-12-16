@@ -5,6 +5,7 @@ exports[`Users API > GET /users/:id > returns user by id > GET /users/:id - foun
   "avatarUrl": "https://example.com/findable.jpg",
   "createdAt": "<DATETIME:1>",
   "id": "<UUID:1>",
+  "idAlias": "findable-user",
   "name": "Findable User",
 }
 `;
@@ -14,6 +15,7 @@ exports[`Users API > POST /users > creates a user with name and avatarUrl in dev
   "avatarUrl": "https://example.com/avatar.jpg",
   "createdAt": "<DATETIME:1>",
   "id": "<UUID:1>",
+  "idAlias": "test-user",
   "name": "Test User",
 }
 `;
@@ -23,6 +25,7 @@ exports[`Users API > POST /users > creates a user with only name > POST /users -
   "avatarUrl": null,
   "createdAt": "<DATETIME:1>",
   "id": "<UUID:1>",
+  "idAlias": "test-user-2",
   "name": "Test User 2",
 }
 `;
