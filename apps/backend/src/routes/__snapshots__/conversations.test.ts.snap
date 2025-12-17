@@ -91,6 +91,7 @@ exports[`Conversations API > POST /conversations/:id/messages > sends a text mes
   "conversationId": "<UUID:2>",
   "createdAt": "<DATETIME:1>",
   "id": "<UUID:1>",
+  "reactions": [],
   "senderUserId": "<UUID:3>",
   "text": "Hello, world!",
   "type": "text",

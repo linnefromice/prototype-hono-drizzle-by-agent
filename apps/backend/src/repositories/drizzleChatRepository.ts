@@ -60,7 +60,7 @@ const mapConversation = (
   participants: participantList,
 })
 
-const mapMessage = (row: typeof messages.$inferSelect): Message => ({
+const mapMessage = (row: typeof messages.$inferSelect): Omit<Message, 'reactions'> => ({
   id: row.id,
   conversationId: row.conversationId,
   senderUserId: row.senderUserId ?? undefined,
@@ -280,7 +280,12 @@ export class DrizzleChatRepository implements ChatRepository {
       .returning()
 
     const [messageRow] = result as Array<typeof messages.$inferSelect>
-    return mapMessage(messageRow)
+
+    // New messages have no reactions yet
+    return {
+      ...mapMessage(messageRow),
+      reactions: [],
+    }
   }
 
   async listMessages(conversationId: string, options: MessageQueryOptions = {}): Promise<Message[]> {
@@ -297,12 +302,40 @@ export class DrizzleChatRepository implements ChatRepository {
       .orderBy(desc(messages.createdAt))
       .limit(limit)
 
-    return messageRows.map(mapMessage)
+    // Fetch reactions for each message
+    const messagesWithReactions = await Promise.all(
+      messageRows.map(async (msgRow) => {
+        const reactionRows = await this.client
+          .select()
+          .from(reactions)
+          .where(eq(reactions.messageId, msgRow.id))
+
+        return {
+          ...mapMessage(msgRow),
+          reactions: reactionRows.map(mapReaction),
+        }
+      })
+    )
+
+    return messagesWithReactions
   }
 
   async findMessageById(messageId: string): Promise<Message | null> {
     const [messageRow] = await this.client.select().from(messages).where(eq(messages.id, messageId)).limit(1)
-    return messageRow ? mapMessage(messageRow) : null
+
+    if (!messageRow) {
+      return null
+    }
+
+    const reactionRows = await this.client
+      .select()
+      .from(reactions)
+      .where(eq(reactions.messageId, messageRow.id))
+
+    return {
+      ...mapMessage(messageRow),
+      reactions: reactionRows.map(mapReaction),
+    }
   }
 
   async addReaction(messageId: string, data: ReactionRequest): Promise<Reaction> {
@@ -340,6 +373,15 @@ export class DrizzleChatRepository implements ChatRepository {
       .returning()
 
     return reactionRow ? mapReaction(reactionRow) : null
+  }
+
+  async listReactions(messageId: string): Promise<Reaction[]> {
+    const reactionRows = await this.client
+      .select()
+      .from(reactions)
+      .where(eq(reactions.messageId, messageId))
+
+    return reactionRows.map(mapReaction)
   }
 
   async updateConversationRead(

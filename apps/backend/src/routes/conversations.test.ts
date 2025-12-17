@@ -466,6 +466,12 @@ describe('Conversations API', () => {
 
       // Zod schema validation for all messages in the array
       expectValidZodSchemaArray(getConversationsIdMessagesResponseItem, messages, 'messages')
+
+      // Verify reactions field exists and is an array
+      messages.forEach((message: any) => {
+        expect(message).toHaveProperty('reactions')
+        expect(Array.isArray(message.reactions)).toBe(true)
+      })
     })
 
     it('respects limit parameter for pagination', async () => {
@@ -559,6 +565,69 @@ describe('Conversations API', () => {
       expect(response.status).toBe(200)
       const messages = await response.json()
       expect(Array.isArray(messages)).toBe(true)
+    })
+
+    it('includes reactions in message list', async () => {
+      const user1 = await createUser('User 1', 'user1')
+      const user2 = await createUser('User 2', 'user2')
+
+      // Create a conversation
+      const createResponse = await app.request('/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'direct',
+          participantIds: [user1.id, user2.id],
+        }),
+      })
+
+      const conversation = await createResponse.json()
+
+      // Send a message
+      const messageResponse = await app.request(`/conversations/${conversation.id}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          senderUserId: user1.id,
+          text: 'Hello with reactions',
+        }),
+      })
+
+      const message = await messageResponse.json()
+
+      // Add reactions to the message
+      await app.request(`/messages/${message.id}/reactions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user2.id,
+          emoji: '👍',
+        }),
+      })
+
+      await app.request(`/messages/${message.id}/reactions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user1.id,
+          emoji: '❤️',
+        }),
+      })
+
+      // Get messages
+      const response = await app.request(
+        `/conversations/${conversation.id}/messages?userId=${user1.id}`
+      )
+
+      expect(response.status).toBe(200)
+
+      const messages = await response.json()
+      const messageWithReactions = messages.find((m: any) => m.id === message.id)
+
+      expect(messageWithReactions).toBeDefined()
+      expect(messageWithReactions.reactions).toHaveLength(2)
+      expect(messageWithReactions.reactions.some((r: any) => r.emoji === '👍' && r.userId === user2.id)).toBe(true)
+      expect(messageWithReactions.reactions.some((r: any) => r.emoji === '❤️' && r.userId === user1.id)).toBe(true)
     })
 
     it('returns 403 when user is not a participant', async () => {

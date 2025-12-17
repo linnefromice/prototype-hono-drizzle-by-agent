@@ -6,6 +6,7 @@
  */
 import type { MessageType } from "./messageType";
 import type { MessageSystemEvent } from "./messageSystemEvent";
+import type { Reaction } from "./reaction";
 
 export interface Message {
   id: string;
@@ -20,4 +21,5 @@ export interface Message {
   /** @nullable */
   systemEvent?: MessageSystemEvent;
   createdAt: string;
+  reactions: Reaction[];
 }
