@@ -477,7 +477,182 @@ paths:
           description: Bad request - invalid idAlias format
         '404':
           description: User not found
+  /api/auth/sign-up/email:
+    post:
+      summary: Sign up with username and email
+      description: Create a new user account with username, email, and password using BetterAuth
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignUpRequest'
+      responses:
+        '200':
+          description: User successfully created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Bad request - validation error or duplicate username/email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+  /api/auth/sign-in/username:
+    post:
+      summary: Sign in with username
+      description: Authenticate user with username and password
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignInRequest'
+      responses:
+        '200':
+          description: Successfully authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: better-auth.session_token=<token>; Path=/; HttpOnly
+        '401':
+          description: Unauthorized - invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthError'
+  /api/auth/get-session:
+    get:
+      summary: Get current session
+      description: Retrieve the current authenticated user's session information
+      tags:
+        - Authentication
+      parameters:
+        - name: Cookie
+          in: header
+          required: false
+          schema:
+            type: string
+            example: better-auth.session_token=<token>
+      responses:
+        '200':
+          description: Session information or null if not authenticated
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/SessionResponse'
+                  - type: 'null'
+  /api/auth/sign-out:
+    post:
+      summary: Sign out
+      description: Invalidate the current session and sign out the user
+      tags:
+        - Authentication
+      parameters:
+        - name: Cookie
+          in: header
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successfully signed out
+  /api/protected/me:
+    get:
+      summary: Get authenticated user info
+      description: Get current authenticated user's auth information
+      tags:
+        - Protected
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: User auth information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthUserInfo'
+        '401':
+          description: Unauthorized - not authenticated
+  /api/protected/profile:
+    get:
+      summary: Get user profile
+      description: Get current user's complete profile including chat information
+      tags:
+        - Protected
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: User profile with auth and chat information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401':
+          description: Unauthorized - not authenticated
+  /api/protected/profile/name:
+    put:
+      summary: Update profile name
+      description: Update user's name in chat profile
+      tags:
+        - Protected
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileNameRequest'
+      responses:
+        '200':
+          description: Profile name updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateProfileNameResponse'
+        '400':
+          description: Bad request - invalid name
+        '401':
+          description: Unauthorized - not authenticated
+  /api/protected/public:
+    get:
+      summary: Public endpoint with optional auth
+      description: Example endpoint that works for both authenticated and guest users
+      tags:
+        - Protected
+      parameters:
+        - name: Cookie
+          in: header
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicResponse'
 components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: better-auth.session_token
   schemas:
     HealthResponse:
       type: object
@@ -870,3 +1045,239 @@ components:
           maxLength: 30
       required:
         - idAlias
+    SignUpRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 20
+          pattern: '^[a-zA-Z0-9_]+$'
+          description: 'Username (3-20 characters, alphanumeric and underscore only, case-insensitive)'
+        email:
+          type: string
+          format: email
+          description: 'Email address (required)'
+        password:
+          type: string
+          minLength: 8
+          description: 'Password (minimum 8 characters)'
+        name:
+          type: string
+          description: 'Display name'
+      required:
+        - username
+        - email
+        - password
+        - name
+    SignInRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          description: 'Username (case-insensitive)'
+        password:
+          type: string
+      required:
+        - username
+        - password
+    AuthUser:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 'User ID'
+        username:
+          type: string
+          description: 'Username'
+        name:
+          type: string
+          description: 'Display name'
+        email:
+          type: string
+          format: email
+          description: 'Email address'
+        emailVerified:
+          type: boolean
+          description: 'Whether email is verified'
+        image:
+          type: string
+          nullable: true
+          description: 'Profile image URL'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - username
+        - name
+        - email
+        - emailVerified
+        - createdAt
+        - updatedAt
+    AuthSession:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 'Session ID'
+        expiresAt:
+          type: string
+          format: date-time
+          description: 'Session expiration time'
+        userId:
+          type: string
+          description: 'User ID associated with this session'
+        token:
+          type: string
+          description: 'Session token'
+      required:
+        - id
+        - expiresAt
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/AuthUser'
+        token:
+          type: string
+          description: 'Authentication token'
+      required:
+        - user
+    SessionResponse:
+      type: object
+      properties:
+        session:
+          $ref: '#/components/schemas/AuthSession'
+        user:
+          $ref: '#/components/schemas/AuthUser'
+      required:
+        - session
+        - user
+    AuthError:
+      type: object
+      properties:
+        code:
+          type: string
+          description: 'Error code'
+          example: 'VALIDATION_ERROR'
+        message:
+          type: string
+          description: 'Error message'
+          example: 'Username already exists'
+      required:
+        - message
+    AuthUserInfo:
+      type: object
+      properties:
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+            username:
+              type: string
+            name:
+              type: string
+            email:
+              type: string
+              format: email
+            emailVerified:
+              type: boolean
+          required:
+            - id
+            - username
+            - name
+            - email
+            - emailVerified
+        session:
+          type: object
+          properties:
+            id:
+              type: string
+            expiresAt:
+              type: string
+              format: date-time
+          required:
+            - id
+            - expiresAt
+      required:
+        - user
+        - session
+    ChatUserInfo:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        idAlias:
+          type: string
+        name:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+      required:
+        - id
+        - idAlias
+        - name
+    UserProfile:
+      type: object
+      properties:
+        auth:
+          type: object
+          properties:
+            id:
+              type: string
+            username:
+              type: string
+            name:
+              type: string
+            email:
+              type: string
+              format: email
+          required:
+            - id
+            - username
+            - name
+            - email
+        chat:
+          allOf:
+            - $ref: '#/components/schemas/ChatUserInfo'
+            - type: object
+              nullable: true
+      required:
+        - auth
+        - chat
+    UpdateProfileNameRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: 'New name for the user profile'
+      required:
+        - name
+    UpdateProfileNameResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        chatUser:
+          $ref: '#/components/schemas/ChatUserInfo'
+      required:
+        - success
+        - chatUser
+    PublicResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        authenticated:
+          type: boolean
+      required:
+        - message
+        - authenticated
