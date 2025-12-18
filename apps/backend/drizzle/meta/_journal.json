@@ -22,6 +22,13 @@
       "when": 1766020364934,
       "tag": "0002_uneven_cyclops",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1766035616591,
+      "tag": "0003_add_better_auth_tables",
+      "breakpoints": true
     }
   ]
 }

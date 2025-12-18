@@ -33,10 +33,6 @@ export const postItemsBody = zod.object({
 /**
  * @summary List conversations for a user
  */
-export const getConversationsQueryParams = zod.object({
-  userId: zod.string().uuid(),
-});
-
 export const getConversationsResponseParticipantsItemUserIdAliasMin = 3;
 export const getConversationsResponseParticipantsItemUserIdAliasMax = 30;
 export const getConversationsResponseParticipantsItemUserIdAliasRegExp =
@@ -196,7 +192,6 @@ export const getConversationsIdMessagesParams = zod.object({
 export const getConversationsIdMessagesQueryLimitMax = 100;
 
 export const getConversationsIdMessagesQueryParams = zod.object({
-  userId: zod.string().uuid(),
   limit: zod
     .number()
     .min(1)
@@ -250,10 +245,6 @@ export const deleteMessagesIdParams = zod.object({
   id: zod.string().uuid(),
 });
 
-export const deleteMessagesIdQueryParams = zod.object({
-  userId: zod.string().uuid(),
-});
-
 /**
  * @summary Get reactions for a message
  */
@@ -290,10 +281,6 @@ export const postMessagesIdReactionsBody = zod.object({
 export const deleteMessagesIdReactionsEmojiParams = zod.object({
   id: zod.string().uuid(),
   emoji: zod.string(),
-});
-
-export const deleteMessagesIdReactionsEmojiQueryParams = zod.object({
-  userId: zod.string().uuid(),
 });
 
 export const deleteMessagesIdReactionsEmojiResponse = zod.object({
@@ -334,10 +321,6 @@ export const getConversationsIdUnreadCountParams = zod.object({
   id: zod.string().uuid(),
 });
 
-export const getConversationsIdUnreadCountQueryParams = zod.object({
-  userId: zod.string().uuid(),
-});
-
 export const getConversationsIdUnreadCountResponseUnreadCountMin = 0;
 
 export const getConversationsIdUnreadCountResponse = zod.object({
@@ -362,10 +345,6 @@ export const postMessagesIdBookmarksBody = zod.object({
  */
 export const deleteMessagesIdBookmarksParams = zod.object({
   id: zod.string().uuid(),
-});
-
-export const deleteMessagesIdBookmarksQueryParams = zod.object({
-  userId: zod.string().uuid(),
 });
 
 export const deleteMessagesIdBookmarksResponse = zod.object({
@@ -504,6 +483,182 @@ export const postUsersLoginResponse = zod.object({
   name: zod.string(),
   avatarUrl: zod.string().nullish(),
   createdAt: zod.string().datetime({}),
+});
+
+/**
+ * Create a new user account with username, email, and password using BetterAuth
+ * @summary Sign up with username and email
+ */
+export const postApiAuthSignUpEmailBodyUsernameMin = 3;
+export const postApiAuthSignUpEmailBodyUsernameMax = 20;
+export const postApiAuthSignUpEmailBodyUsernameRegExp = new RegExp(
+  "^[a-zA-Z0-9_]+$"
+);
+export const postApiAuthSignUpEmailBodyPasswordMin = 8;
+
+export const postApiAuthSignUpEmailBody = zod.object({
+  username: zod
+    .string()
+    .min(postApiAuthSignUpEmailBodyUsernameMin)
+    .max(postApiAuthSignUpEmailBodyUsernameMax)
+    .regex(postApiAuthSignUpEmailBodyUsernameRegExp)
+    .describe(
+      "Username (3-20 characters, alphanumeric and underscore only, case-insensitive)"
+    ),
+  email: zod.string().email().describe("Email address (required)"),
+  password: zod
+    .string()
+    .min(postApiAuthSignUpEmailBodyPasswordMin)
+    .describe("Password (minimum 8 characters)"),
+  name: zod.string().describe("Display name"),
+});
+
+export const postApiAuthSignUpEmailResponse = zod.object({
+  user: zod.object({
+    id: zod.string().describe("User ID"),
+    username: zod.string().describe("Username"),
+    name: zod.string().describe("Display name"),
+    email: zod.string().email().describe("Email address"),
+    emailVerified: zod.boolean().describe("Whether email is verified"),
+    image: zod.string().nullish().describe("Profile image URL"),
+    createdAt: zod.string().datetime({}),
+    updatedAt: zod.string().datetime({}),
+  }),
+  token: zod.string().optional().describe("Authentication token"),
+});
+
+/**
+ * Authenticate user with username and password
+ * @summary Sign in with username
+ */
+export const postApiAuthSignInUsernameBody = zod.object({
+  username: zod.string().describe("Username (case-insensitive)"),
+  password: zod.string(),
+});
+
+export const postApiAuthSignInUsernameResponse = zod.object({
+  user: zod.object({
+    id: zod.string().describe("User ID"),
+    username: zod.string().describe("Username"),
+    name: zod.string().describe("Display name"),
+    email: zod.string().email().describe("Email address"),
+    emailVerified: zod.boolean().describe("Whether email is verified"),
+    image: zod.string().nullish().describe("Profile image URL"),
+    createdAt: zod.string().datetime({}),
+    updatedAt: zod.string().datetime({}),
+  }),
+  token: zod.string().optional().describe("Authentication token"),
+});
+
+/**
+ * Retrieve the current authenticated user's session information
+ * @summary Get current session
+ */
+export const getApiAuthGetSessionHeader = zod.object({
+  Cookie: zod.string().optional(),
+});
+
+export const getApiAuthGetSessionResponse = zod.union([
+  zod.object({
+    session: zod.object({
+      id: zod.string().describe("Session ID"),
+      expiresAt: zod.string().datetime({}).describe("Session expiration time"),
+      userId: zod
+        .string()
+        .optional()
+        .describe("User ID associated with this session"),
+      token: zod.string().optional().describe("Session token"),
+    }),
+    user: zod.object({
+      id: zod.string().describe("User ID"),
+      username: zod.string().describe("Username"),
+      name: zod.string().describe("Display name"),
+      email: zod.string().email().describe("Email address"),
+      emailVerified: zod.boolean().describe("Whether email is verified"),
+      image: zod.string().nullish().describe("Profile image URL"),
+      createdAt: zod.string().datetime({}),
+      updatedAt: zod.string().datetime({}),
+    }),
+  }),
+  zod.null(),
+]);
+
+/**
+ * Invalidate the current session and sign out the user
+ * @summary Sign out
+ */
+export const postApiAuthSignOutHeader = zod.object({
+  Cookie: zod.string().optional(),
+});
+
+/**
+ * Get current authenticated user's auth information
+ * @summary Get authenticated user info
+ */
+export const getApiProtectedMeResponse = zod.object({
+  user: zod.object({
+    id: zod.string(),
+    username: zod.string(),
+    name: zod.string(),
+    email: zod.string().email(),
+    emailVerified: zod.boolean(),
+  }),
+  session: zod.object({
+    id: zod.string(),
+    expiresAt: zod.string().datetime({}),
+  }),
+});
+
+/**
+ * Get current user's complete profile including chat information
+ * @summary Get user profile
+ */
+export const getApiProtectedProfileResponse = zod.object({
+  auth: zod.object({
+    id: zod.string(),
+    username: zod.string(),
+    name: zod.string(),
+    email: zod.string().email(),
+  }),
+  chat: zod
+    .object({
+      id: zod.string().uuid(),
+      idAlias: zod.string(),
+      name: zod.string(),
+      avatarUrl: zod.string().nullish(),
+    })
+    .and(zod.object({}).nullable()),
+});
+
+/**
+ * Update user's name in chat profile
+ * @summary Update profile name
+ */
+export const putApiProtectedProfileNameBody = zod.object({
+  name: zod.string().min(1).describe("New name for the user profile"),
+});
+
+export const putApiProtectedProfileNameResponse = zod.object({
+  success: zod.boolean(),
+  chatUser: zod.object({
+    id: zod.string().uuid(),
+    idAlias: zod.string(),
+    name: zod.string(),
+    avatarUrl: zod.string().nullish(),
+  }),
+});
+
+/**
+ * Example endpoint that works for both authenticated and guest users
+ * @summary Public endpoint with optional auth
+ */
+export const getApiProtectedPublicHeader = zod.object({
+  Cookie: zod.string().optional(),
+});
+
+export const getApiProtectedPublicResponse = zod.object({
+  message: zod.string(),
+  authenticated: zod.boolean(),
 });
 
 // Re-export Zod schemas for request validation

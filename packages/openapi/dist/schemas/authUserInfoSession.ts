@@ -5,11 +5,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type GetConversationsIdMessagesParams = {
-  /**
-   * @minimum 1
-   * @maximum 100
-   */
-  limit?: number;
-  before?: string;
+export type AuthUserInfoSession = {
+  id: string;
+  expiresAt: string;
 };

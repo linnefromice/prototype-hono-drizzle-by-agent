@@ -4,8 +4,15 @@ import { DrizzleChatRepository } from '../repositories/drizzleChatRepository'
 import { ChatUsecase } from '../usecases/chatUsecase'
 import { HttpError } from '../utils/errors'
 import { getDbClient } from '../utils/dbClient'
+import { getChatUserId } from '../utils/getChatUserId'
+import { requireAuth } from '../middleware/requireAuth'
+import type { Env } from '../infrastructure/db/client.d1'
+import type { AuthVariables } from '../infrastructure/auth'
 
-const router = new Hono()
+const router = new Hono<{
+  Bindings: Env
+  Variables: AuthVariables
+}>()
 
 const handleError = (error: unknown, c: any) => {
   if (error instanceof HttpError) {
@@ -20,16 +27,13 @@ const handleError = (error: unknown, c: any) => {
   return c.json({ message }, 500)
 }
 
-router.delete('/:id', async c => {
+router.delete('/:id', requireAuth, async c => {
   const messageId = c.req.param('id')
-  const userId = c.req.query('userId')
-
-  if (!userId) {
-    return c.json({ message: 'userId is required' }, 400)
-  }
+  const authUser = c.get('authUser')
 
   try {
     const db = await getDbClient(c)
+    const userId = await getChatUserId(db, authUser!)
     const chatUsecase = new ChatUsecase(new DrizzleChatRepository(db))
     await chatUsecase.deleteMessage(messageId, userId)
     return c.body(null, 204)
@@ -38,7 +42,7 @@ router.delete('/:id', async c => {
   }
 })
 
-router.get('/:id/reactions', async c => {
+router.get('/:id/reactions', requireAuth, async c => {
   const messageId = c.req.param('id')
 
   try {
@@ -51,12 +55,21 @@ router.get('/:id/reactions', async c => {
   }
 })
 
-router.post('/:id/reactions', async c => {
+router.post('/:id/reactions', requireAuth, async c => {
   const messageId = c.req.param('id')
-  const payload = ReactionRequestSchema.parse(await c.req.json())
+  const authUser = c.get('authUser')
+  const body = await c.req.json()
 
   try {
     const db = await getDbClient(c)
+    const userId = await getChatUserId(db, authUser!)
+
+    // Override userId with authenticated user's ID
+    const payload = ReactionRequestSchema.parse({
+      ...body,
+      userId
+    })
+
     const chatUsecase = new ChatUsecase(new DrizzleChatRepository(db))
     const reaction = await chatUsecase.addReaction(messageId, payload)
     return c.json(reaction, 201)
@@ -65,17 +78,14 @@ router.post('/:id/reactions', async c => {
   }
 })
 
-router.delete('/:id/reactions/:emoji', async c => {
+router.delete('/:id/reactions/:emoji', requireAuth, async c => {
   const messageId = c.req.param('id')
   const emoji = c.req.param('emoji')
-  const userId = c.req.query('userId')
-
-  if (!userId) {
-    return c.json({ message: 'userId is required' }, 400)
-  }
+  const authUser = c.get('authUser')
 
   try {
     const db = await getDbClient(c)
+    const userId = await getChatUserId(db, authUser!)
     const chatUsecase = new ChatUsecase(new DrizzleChatRepository(db))
     const reaction = await chatUsecase.removeReaction(messageId, emoji, userId)
     return c.json(reaction)
@@ -84,12 +94,21 @@ router.delete('/:id/reactions/:emoji', async c => {
   }
 })
 
-router.post('/:id/bookmarks', async c => {
+router.post('/:id/bookmarks', requireAuth, async c => {
   const messageId = c.req.param('id')
-  const payload = BookmarkRequestSchema.parse(await c.req.json())
+  const authUser = c.get('authUser')
+  const body = await c.req.json()
 
   try {
     const db = await getDbClient(c)
+    const userId = await getChatUserId(db, authUser!)
+
+    // Override userId with authenticated user's ID
+    const payload = BookmarkRequestSchema.parse({
+      ...body,
+      userId
+    })
+
     const chatUsecase = new ChatUsecase(new DrizzleChatRepository(db))
     const bookmark = await chatUsecase.addBookmark(messageId, payload)
     return c.json({ status: 'bookmarked', bookmark }, 201)
@@ -98,16 +117,13 @@ router.post('/:id/bookmarks', async c => {
   }
 })
 
-router.delete('/:id/bookmarks', async c => {
+router.delete('/:id/bookmarks', requireAuth, async c => {
   const messageId = c.req.param('id')
-  const userId = c.req.query('userId')
-
-  if (!userId) {
-    return c.json({ message: 'userId is required' }, 400)
-  }
+  const authUser = c.get('authUser')
 
   try {
     const db = await getDbClient(c)
+    const userId = await getChatUserId(db, authUser!)
     const chatUsecase = new ChatUsecase(new DrizzleChatRepository(db))
     await chatUsecase.removeBookmark(messageId, userId)
     return c.json({ status: 'unbookmarked' })

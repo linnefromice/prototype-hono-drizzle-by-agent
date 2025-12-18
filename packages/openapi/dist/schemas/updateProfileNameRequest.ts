@@ -5,11 +5,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type GetConversationsIdMessagesParams = {
+export interface UpdateProfileNameRequest {
   /**
-   * @minimum 1
-   * @maximum 100
+   * New name for the user profile
+   * @minLength 1
    */
-  limit?: number;
-  before?: string;
-};
+  name: string;
+}
