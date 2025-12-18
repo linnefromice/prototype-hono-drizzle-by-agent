@@ -25,17 +25,26 @@ export class DrizzleUserRepository implements UserRepository {
       throw new Error(`ID Alias "${data.idAlias}" is already in use`)
     }
 
+    // Note: chatUsers schema has authUserId for Better Auth integration
+    // This is a legacy endpoint that creates users without authentication
+    // TODO: Migrate to use Better Auth user creation flow
     const [created] = await this.client
       .insert(users)
       .values({
         idAlias: data.idAlias,
         name: data.name,
         avatarUrl: data.avatarUrl || null,
+        // authUserId is null for legacy users created without authentication
       })
       .returning()
 
-    // SQLite stores createdAt as ISO 8601 string, no need to convert
-    return created
+    return {
+      id: created.id,
+      idAlias: created.idAlias,
+      name: created.name,
+      avatarUrl: created.avatarUrl,
+      createdAt: created.createdAt,
+    }
   }
 
   async findById(id: string): Promise<User | null> {
@@ -45,8 +54,13 @@ export class DrizzleUserRepository implements UserRepository {
       return null
     }
 
-    // SQLite stores createdAt as ISO 8601 string, no need to convert
-    return found
+    return {
+      id: found.id,
+      idAlias: found.idAlias,
+      name: found.name,
+      avatarUrl: found.avatarUrl,
+      createdAt: found.createdAt,
+    }
   }
 
   async findByIdAlias(idAlias: string): Promise<User | null> {
@@ -55,14 +69,29 @@ export class DrizzleUserRepository implements UserRepository {
       .from(users)
       .where(eq(users.idAlias, idAlias))
 
-    return found || null
+    if (!found) {
+      return null
+    }
+
+    return {
+      id: found.id,
+      idAlias: found.idAlias,
+      name: found.name,
+      avatarUrl: found.avatarUrl,
+      createdAt: found.createdAt,
+    }
   }
 
   async listAll(): Promise<User[]> {
     const allUsers = await this.client.select().from(users)
 
-    // SQLite stores createdAt as ISO 8601 string, no need to convert
-    return allUsers
+    return allUsers.map(user => ({
+      id: user.id,
+      idAlias: user.idAlias,
+      name: user.name,
+      avatarUrl: user.avatarUrl,
+      createdAt: user.createdAt,
+    }))
   }
 
   async isIdAliasAvailable(idAlias: string): Promise<boolean> {

@@ -39,8 +39,6 @@ export const createAuth = (db: DrizzleD1Database<typeof schema>) => {
       username({
         minUsernameLength: 3,
         maxUsernameLength: 20,
-        // Allow alphanumeric, underscore, and hyphen
-        allowedCharacters: /^[a-zA-Z0-9_-]+$/,
       })
     ],
 

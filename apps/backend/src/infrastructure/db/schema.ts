@@ -128,20 +128,21 @@ const messageStatuses = ['active', 'deleted'] as const
  * Chat user profiles
  * Links to auth_user and stores chat-specific information
  * Note: This is separate from auth_user to maintain chat history integrity
+ *
+ * Table name kept as 'users' for backward compatibility with existing foreign keys
  */
-export const chatUsers = sqliteTable('chat_users', {
+export const chatUsers = sqliteTable('users', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   authUserId: text('auth_user_id')
-    .notNull()
     .unique()
     .references(() => authUser.id, { onDelete: 'cascade' }),
   idAlias: text('id_alias').notNull().unique(),
+  name: text('name').notNull(),
   avatarUrl: text('avatar_url'),
-  displayName: text('display_name').notNull(),
   createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
 }, (table) => ({
-  idAliasIdx: index('chat_users_id_alias_idx').on(table.idAlias),
-  authUserIdIdx: index('chat_users_auth_user_id_idx').on(table.authUserId),
+  idAliasIdx: index('users_id_alias_idx').on(table.idAlias),
+  authUserIdIdx: index('users_auth_user_id_idx').on(table.authUserId),
 }))
 
 // Keep legacy export for backward compatibility during migration
