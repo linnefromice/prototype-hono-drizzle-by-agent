@@ -13,10 +13,14 @@ import * as schema from '../db/schema'
  * - Future-ready for TOTP, OAuth, email verification
  *
  * @param db - Drizzle database instance
+ * @param secret - Secret key for signing tokens (from env.BETTER_AUTH_SECRET or process.env.BETTER_AUTH_SECRET)
  * @returns Better Auth instance
  */
-export const createAuth = (db: DrizzleD1Database<typeof schema>) => {
+export const createAuth = (db: DrizzleD1Database<typeof schema>, secret?: string) => {
   return betterAuth({
+    // Secret key for signing tokens
+    secret: secret || process.env.BETTER_AUTH_SECRET,
+
     // Base URL and path configuration
     baseURL: process.env.NODE_ENV === 'test'
       ? 'http://localhost:3000'  // Test environment

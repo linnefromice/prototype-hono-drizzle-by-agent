@@ -5,6 +5,8 @@ import * as schema from './schema'
 // Type for Cloudflare D1 database binding
 export type Env = {
   DB: D1Database
+  ENVIRONMENT?: 'development' | 'staging' | 'production'
+  BETTER_AUTH_SECRET?: string
 }
 
 /**

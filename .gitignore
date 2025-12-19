@@ -9,3 +9,6 @@ apps/backend/coverage
 *.db
 *.db-shm
 *.db-wal
+
+# Serena MCP server cache
+.serena/
