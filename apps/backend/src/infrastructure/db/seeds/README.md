@@ -2,6 +2,30 @@
 
 このディレクトリには、データベースの seed データを管理するためのツールが含まれています。
 
+## 🔐 認証付きシードデータ (New!)
+
+### 002_auth_users.ts
+
+20人の初期ユーザーに対して認証情報を作成し、チャットユーザーとリンクします。
+
+**ログイン情報:**
+- **ユーザー名**: alice, bob, carol, dave, eve, frank, grace, heidi, ivan, judy, kevin, laura, michael, nancy, oscar, peggy, quinn, rachel, steve, tina
+- **パスワード**: Password
+
+**実行方法:**
+```bash
+# ローカル開発環境
+npm run db:seed
+```
+
+**機能:**
+- `auth_user` テーブルにユーザーを作成
+- BetterAuth の API を使用してパスワードを安全にハッシュ化
+- 各認証ユーザーを対応するチャットユーザー（`users`テーブル）に `authUserId` でリンク
+- 既に認証情報が設定されているユーザーはスキップ
+
+---
+
 ## アーキテクチャ
 
 ### Seed データの管理
