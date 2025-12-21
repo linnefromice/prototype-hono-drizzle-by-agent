@@ -76,12 +76,8 @@ export class ChatUsecase {
     return this.repo.listMessages(conversationId, options)
   }
 
-  async sendMessage(conversationId: string, payload: SendMessageRequest) {
-    if (!payload.senderUserId) {
-      throw new HttpError(400, 'senderUserId is required for messages')
-    }
-
-    await this.ensureActiveParticipant(conversationId, payload.senderUserId)
+  async sendMessage(conversationId: string, senderId: string, payload: SendMessageRequest) {
+    await this.ensureActiveParticipant(conversationId, senderId)
 
     if (payload.replyToMessageId) {
       const referenced = await this.repo.findMessageById(payload.replyToMessageId)
@@ -90,18 +86,18 @@ export class ChatUsecase {
       }
     }
 
-    return this.repo.createMessage(conversationId, { ...payload, type: 'text' })
+    return this.repo.createMessage(conversationId, { ...payload, senderUserId: senderId, type: 'text' })
   }
 
-  async addReaction(messageId: string, data: ReactionRequest): Promise<Reaction> {
+  async addReaction(messageId: string, userId: string, emoji: string): Promise<Reaction> {
     const message = await this.repo.findMessageById(messageId)
     if (!message) {
       throw new HttpError(404, 'Message not found')
     }
 
-    await this.ensureActiveParticipant(message.conversationId, data.userId)
+    await this.ensureActiveParticipant(message.conversationId, userId)
 
-    return this.repo.addReaction(messageId, data)
+    return this.repo.addReaction(messageId, { userId, emoji })
   }
 
   async removeReaction(messageId: string, emoji: string, userId: string) {
@@ -131,16 +127,17 @@ export class ChatUsecase {
 
   async markConversationRead(
     conversationId: string,
-    data: UpdateConversationReadRequest,
+    userId: string,
+    lastReadMessageId: string,
   ): Promise<ConversationRead> {
-    await this.ensureActiveParticipant(conversationId, data.userId)
+    await this.ensureActiveParticipant(conversationId, userId)
 
-    const message = await this.repo.findMessageById(data.lastReadMessageId)
+    const message = await this.repo.findMessageById(lastReadMessageId)
     if (!message || message.conversationId !== conversationId) {
       throw new HttpError(400, 'lastReadMessageId must belong to the conversation')
     }
 
-    return this.repo.updateConversationRead(conversationId, data)
+    return this.repo.updateConversationRead(conversationId, { userId, lastReadMessageId })
   }
 
   async countUnread(conversationId: string, userId: string): Promise<number> {
@@ -148,15 +145,15 @@ export class ChatUsecase {
     return this.repo.countUnread(conversationId, userId)
   }
 
-  async addBookmark(messageId: string, data: BookmarkRequest): Promise<Bookmark> {
+  async addBookmark(messageId: string, userId: string): Promise<Bookmark> {
     const message = await this.repo.findMessageById(messageId)
     if (!message) {
       throw new HttpError(404, 'Message not found')
     }
 
-    await this.ensureActiveParticipant(message.conversationId, data.userId)
+    await this.ensureActiveParticipant(message.conversationId, userId)
 
-    return this.repo.addBookmark(messageId, data)
+    return this.repo.addBookmark(messageId, { userId })
   }
 
   async removeBookmark(messageId: string, userId: string): Promise<Bookmark> {
@@ -203,7 +200,7 @@ export class ChatUsecase {
 
   async createSystemMessage(
     conversationId: string,
-    payload: Pick<SendMessageRequest, 'systemEvent' | 'senderUserId' | 'text'>,
+    payload: { systemEvent: string; senderUserId: string | null; text?: string | null },
   ) {
     return this.repo.createMessage(conversationId, { ...payload, type: 'system' })
   }

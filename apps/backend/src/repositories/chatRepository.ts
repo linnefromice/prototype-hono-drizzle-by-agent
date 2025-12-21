@@ -2,21 +2,33 @@ import type {
   AddParticipantRequest,
   Bookmark,
   BookmarkListItem,
-  BookmarkRequest,
   ConversationDetail,
   ConversationRead,
   CreateConversationRequest,
   Message,
   Participant,
   Reaction,
-  ReactionRequest,
   SendMessageRequest,
-  UpdateConversationReadRequest,
 } from 'openapi'
 
 export type MessageQueryOptions = {
   limit?: number
   before?: string
+}
+
+// Internal types that extend API types with fields determined from auth context
+export type ReactionData = {
+  userId: string
+  emoji: string
+}
+
+export type ConversationReadData = {
+  userId: string
+  lastReadMessageId: string
+}
+
+export type BookmarkData = {
+  userId: string
 }
 
 export interface ChatRepository {
@@ -30,23 +42,23 @@ export interface ChatRepository {
 
   createMessage(
     conversationId: string,
-    payload: SendMessageRequest & { type: 'text' | 'system' },
+    payload: SendMessageRequest & { type: 'text' | 'system'; senderUserId: string | null; systemEvent?: string | null },
   ): Promise<Message>
   listMessages(conversationId: string, options?: MessageQueryOptions): Promise<Message[]>
   findMessageById(messageId: string): Promise<Message | null>
   deleteMessage(messageId: string, deletedByUserId: string): Promise<void>
 
-  addReaction(messageId: string, data: ReactionRequest): Promise<Reaction>
+  addReaction(messageId: string, data: ReactionData): Promise<Reaction>
   removeReaction(messageId: string, emoji: string, userId: string): Promise<Reaction | null>
   listReactions(messageId: string): Promise<Reaction[]>
 
   updateConversationRead(
     conversationId: string,
-    data: UpdateConversationReadRequest,
+    data: ConversationReadData,
   ): Promise<ConversationRead>
   countUnread(conversationId: string, userId: string): Promise<number>
 
-  addBookmark(messageId: string, data: BookmarkRequest): Promise<Bookmark>
+  addBookmark(messageId: string, data: BookmarkData): Promise<Bookmark>
   removeBookmark(messageId: string, userId: string): Promise<Bookmark | null>
   listBookmarks(userId: string): Promise<BookmarkListItem[]>
 }

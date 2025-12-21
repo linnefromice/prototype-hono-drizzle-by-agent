@@ -64,14 +64,11 @@ router.post('/:id/reactions', requireAuth, async c => {
     const db = await getDbClient(c)
     const userId = await getChatUserId(db, authUser!)
 
-    // Override userId with authenticated user's ID
-    const payload = ReactionRequestSchema.parse({
-      ...body,
-      userId
-    })
+    // Parse request body (userId is automatically added from session)
+    const payload = ReactionRequestSchema.parse(body)
 
     const chatUsecase = new ChatUsecase(new DrizzleChatRepository(db))
-    const reaction = await chatUsecase.addReaction(messageId, payload)
+    const reaction = await chatUsecase.addReaction(messageId, userId, payload.emoji)
     return c.json(reaction, 201)
   } catch (error) {
     return handleError(error, c)
@@ -97,20 +94,12 @@ router.delete('/:id/reactions/:emoji', requireAuth, async c => {
 router.post('/:id/bookmarks', requireAuth, async c => {
   const messageId = c.req.param('id')
   const authUser = c.get('authUser')
-  const body = await c.req.json()
 
   try {
     const db = await getDbClient(c)
     const userId = await getChatUserId(db, authUser!)
-
-    // Override userId with authenticated user's ID
-    const payload = BookmarkRequestSchema.parse({
-      ...body,
-      userId
-    })
-
     const chatUsecase = new ChatUsecase(new DrizzleChatRepository(db))
-    const bookmark = await chatUsecase.addBookmark(messageId, payload)
+    const bookmark = await chatUsecase.addBookmark(messageId, userId)
     return c.json({ status: 'bookmarked', bookmark }, 201)
   } catch (error) {
     return handleError(error, c)

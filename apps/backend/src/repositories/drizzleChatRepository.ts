@@ -265,7 +265,7 @@ export class DrizzleChatRepository implements ChatRepository {
 
   async createMessage(
     conversationId: string,
-    payload: SendMessageRequest & { type: 'text' | 'system' },
+    payload: SendMessageRequest & { type: 'text' | 'system'; senderUserId: string | null; systemEvent?: string | null },
   ): Promise<Message> {
     const result = await this.client
       .insert(messages)
@@ -353,7 +353,7 @@ export class DrizzleChatRepository implements ChatRepository {
       .where(eq(messages.id, messageId))
   }
 
-  async addReaction(messageId: string, data: ReactionRequest): Promise<Reaction> {
+  async addReaction(messageId: string, data: import('./chatRepository').ReactionData): Promise<Reaction> {
     const [reactionRow] = await this.client
       .insert(reactions)
       .values({
@@ -402,7 +402,7 @@ export class DrizzleChatRepository implements ChatRepository {
 
   async updateConversationRead(
     conversationId: string,
-    data: UpdateConversationReadRequest,
+    data: import('./chatRepository').ConversationReadData,
   ): Promise<ConversationRead> {
     const [readRow] = await this.client
       .insert(conversationReads)
@@ -450,7 +450,7 @@ export class DrizzleChatRepository implements ChatRepository {
     return results.length
   }
 
-  async addBookmark(messageId: string, data: BookmarkRequest): Promise<Bookmark> {
+  async addBookmark(messageId: string, data: import('./chatRepository').BookmarkData): Promise<Bookmark> {
     const [bookmarkRow] = await this.client
       .insert(messageBookmarks)
       .values({

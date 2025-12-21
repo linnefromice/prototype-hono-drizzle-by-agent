@@ -257,11 +257,11 @@ describe('ChatUsecase', () => {
     )
   })
 
-  it('requires senderUserId when sending messages', async () => {
-    const missingSenderPayload = { text: 'Hello' } as unknown as Parameters<typeof usecase.sendMessage>[1]
+  it('requires sender to be active participant when sending messages', async () => {
+    const nonParticipantUserId = uuid(999)
 
-    await expect(usecase.sendMessage(CONVERSATION_ID, missingSenderPayload)).rejects.toThrow(
-      new HttpError(400, 'senderUserId is required for messages'),
+    await expect(usecase.sendMessage(CONVERSATION_ID, nonParticipantUserId, { text: 'Hello' })).rejects.toThrow(
+      new HttpError(403, 'User is not an active participant in this conversation'),
     )
   })
 
@@ -270,8 +270,7 @@ describe('ChatUsecase', () => {
     const foreignMessage = await repo.createMessage(otherConversation.id, { senderUserId: ACTIVE_USER, text: 'Hi', type: 'text' })
 
     await expect(
-      usecase.sendMessage(CONVERSATION_ID, {
-        senderUserId: ACTIVE_USER,
+      usecase.sendMessage(CONVERSATION_ID, ACTIVE_USER, {
         text: 'reply',
         replyToMessageId: foreignMessage.id,
       }),
@@ -280,7 +279,7 @@ describe('ChatUsecase', () => {
 
   it('rejects reactions for unknown messages', async () => {
     await expect(
-      usecase.addReaction(uuid(555), { emoji: '👍', userId: ACTIVE_USER }),
+      usecase.addReaction(uuid(555), ACTIVE_USER, '👍'),
     ).rejects.toThrow(new HttpError(404, 'Message not found'))
   })
 
@@ -297,7 +296,7 @@ describe('ChatUsecase', () => {
     const foreignMessage = await repo.createMessage(otherConversation.id, { senderUserId: ACTIVE_USER, text: 'Hi', type: 'text' })
 
     await expect(
-      usecase.markConversationRead(CONVERSATION_ID, { userId: ACTIVE_USER, lastReadMessageId: foreignMessage.id }),
+      usecase.markConversationRead(CONVERSATION_ID, ACTIVE_USER, foreignMessage.id),
     ).rejects.toThrow(new HttpError(400, 'lastReadMessageId must belong to the conversation'))
   })
 
@@ -305,7 +304,7 @@ describe('ChatUsecase', () => {
     const conversation = await repo.getConversation(CONVERSATION_ID)
     const activeUserId = conversation?.participants[0]?.userId ?? ACTIVE_USER
 
-    await expect(usecase.addBookmark(uuid(777), { userId: activeUserId })).rejects.toThrow(
+    await expect(usecase.addBookmark(uuid(777), activeUserId)).rejects.toThrow(
       new HttpError(404, 'Message not found'),
     )
 

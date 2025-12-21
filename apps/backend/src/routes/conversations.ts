@@ -135,12 +135,9 @@ router.post('/:id/messages', requireAuth, async c => {
     const chatUsecase = new ChatUsecase(new DrizzleChatRepository(db))
     const body = await c.req.json()
 
-    // Override senderUserId with authenticated user's ID
-    const payload = SendMessageRequestSchema.parse({
-      ...body,
-      senderUserId: userId
-    })
-    const created = await chatUsecase.sendMessage(conversationId, payload)
+    // Parse request body (userId is automatically added from session)
+    const payload = SendMessageRequestSchema.parse(body)
+    const created = await chatUsecase.sendMessage(conversationId, userId, payload)
     return c.json(created, 201)
   } catch (error) {
     return handleError(error, c)
@@ -157,12 +154,9 @@ router.post('/:id/read', requireAuth, async c => {
     const chatUsecase = new ChatUsecase(new DrizzleChatRepository(db))
     const body = await c.req.json()
 
-    // Override userId with authenticated user's ID
-    const payload = UpdateConversationReadRequestSchema.parse({
-      ...body,
-      userId: userId
-    })
-    const read = await chatUsecase.markConversationRead(conversationId, payload)
+    // Parse request body (userId is automatically added from session)
+    const payload = UpdateConversationReadRequestSchema.parse(body)
+    const read = await chatUsecase.markConversationRead(conversationId, userId, payload.lastReadMessageId)
     return c.json({ status: 'ok', read })
   } catch (error) {
     return handleError(error, c)
