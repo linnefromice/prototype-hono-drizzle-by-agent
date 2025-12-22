@@ -5,7 +5,7 @@ import { expectMatchesSnapshot } from '../__tests__/helpers/snapshotHelpers'
 import {
   deleteMessagesIdReactionsEmojiResponse,
   deleteMessagesIdBookmarksResponse,
-  getUsersUserIdBookmarksResponseItem,
+  getBookmarksResponseItem,
   getMessagesIdReactionsResponse,
 } from 'openapi'
 import zod from 'zod'
@@ -545,7 +545,7 @@ describe('Messages API', () => {
       expect(bookmarks.length).toBeGreaterThanOrEqual(2)
 
       // Zod schema validation for all bookmarks in the array
-      expectValidZodSchemaArray(getUsersUserIdBookmarksResponseItem, bookmarks, 'bookmarks')
+      expectValidZodSchemaArray(getBookmarksResponseItem, bookmarks, 'bookmarks')
     })
 
     it('returns empty array when user has no bookmarks', async () => {

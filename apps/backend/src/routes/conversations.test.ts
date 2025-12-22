@@ -7,7 +7,7 @@ import {
   getConversationsIdResponse,
   getConversationsResponseItem,
   getConversationsIdMessagesResponseItem,
-  deleteConversationsIdParticipantsUserIdResponse,
+  postConversationsIdLeaveResponse,
   postConversationsIdReadResponse,
   getConversationsIdUnreadCountResponse,
   getUsersUserIdResponse,
@@ -312,7 +312,7 @@ describe('Conversations API', () => {
       const participant = await response.json()
 
       // Zod schema validation
-      expectValidZodSchema(deleteConversationsIdParticipantsUserIdResponse, participant, 'participant')
+      expectValidZodSchema(postConversationsIdLeaveResponse, participant, 'participant')
 
       // Business logic assertions
       expect(participant.conversationId).toBe(conversation.id)

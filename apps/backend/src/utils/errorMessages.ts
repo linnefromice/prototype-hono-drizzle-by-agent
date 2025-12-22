@@ -79,6 +79,7 @@ import { HttpError } from './errors'
 export const HTTP_ERRORS = {
   notFound: (resource: string) => new HttpError(404, notFound(resource)),
   required: (field: string) => new HttpError(400, required(field)),
-  forbidden: (action: string) => new HttpError(403, unauthorized(action)),
+  unauthorized: (action: string) => new HttpError(403, unauthorized(action)),
+  forbidden: (message: string) => new HttpError(403, message),
   badRequest: (message: string) => new HttpError(400, message),
 } as const
