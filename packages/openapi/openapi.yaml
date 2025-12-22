@@ -117,9 +117,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Participant'
-  /conversations/{id}/participants/{userId}:
-    delete:
-      summary: Remove participant from conversation
+  /conversations/{id}/leave:
+    post:
+      summary: Leave a conversation
+      description: Mark the authenticated user as having left the conversation
       security:
         - cookieAuth: []
       parameters:
@@ -129,19 +130,19 @@ paths:
           schema:
             type: string
             format: uuid
-        - name: userId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
       responses:
         '200':
-          description: Participant marked as left
+          description: User marked as left from conversation
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Participant'
+        '401':
+          description: Unauthorized - not authenticated
+        '403':
+          description: Forbidden - user is not a participant in this conversation
+        '404':
+          description: Conversation not found
   /conversations/{id}/messages:
     get:
       summary: List messages in a conversation
@@ -430,18 +431,12 @@ paths:
                 $ref: '#/components/schemas/User'
         '404':
           description: User not found
-  /users/{userId}/bookmarks:
+  /bookmarks:
     get:
-      summary: List bookmarks for a user
+      summary: List bookmarks for authenticated user
+      description: Get all bookmarks for the currently authenticated user
       security:
         - cookieAuth: []
-      parameters:
-        - name: userId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
       responses:
         '200':
           description: User bookmarks
@@ -451,6 +446,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/BookmarkListItem'
+        '401':
+          description: Unauthorized - not authenticated
   /users/login:
     post:
       summary: Login user by ID alias

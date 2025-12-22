@@ -1,16 +1,21 @@
 import type { UserRepository } from '../repositories/userRepository'
 import { HttpError } from '../utils/errors'
+import {
+  HTTP_ERRORS,
+  required,
+  userNotFoundByIdAlias,
+} from '../utils/errorMessages'
 
 export class UserUsecase {
   constructor(private readonly repo: UserRepository) {}
 
   async createUser(data: { idAlias: string; name: string; avatarUrl?: string | null }) {
     if (!data.name || data.name.trim().length === 0) {
-      throw new Error('User name is required')
+      throw HTTP_ERRORS.required('name')
     }
 
     if (!data.idAlias || data.idAlias.trim().length === 0) {
-      throw new Error('User idAlias is required')
+      throw HTTP_ERRORS.required('idAlias')
     }
 
     return this.repo.create({
@@ -24,7 +29,7 @@ export class UserUsecase {
     const user = await this.repo.findById(id)
 
     if (!user) {
-      throw new HttpError(404, 'User not found')
+      throw HTTP_ERRORS.notFound('User')
     }
 
     return user
@@ -34,7 +39,7 @@ export class UserUsecase {
     const user = await this.repo.findByIdAlias(idAlias)
 
     if (!user) {
-      throw new HttpError(404, `User with idAlias "${idAlias}" not found`)
+      throw new HttpError(404, userNotFoundByIdAlias(idAlias))
     }
 
     return user

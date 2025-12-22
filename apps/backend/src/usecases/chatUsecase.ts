@@ -15,17 +15,23 @@ import type {
 } from 'openapi'
 import type { ChatRepository, MessageQueryOptions } from '../repositories/chatRepository'
 import { HttpError } from '../utils/errors'
+import {
+  CHAT_ERRORS,
+  HTTP_ERRORS,
+  notFound,
+  required,
+} from '../utils/errorMessages'
 
 export class ChatUsecase {
   constructor(private readonly repo: ChatRepository) {}
 
   async createConversation(data: CreateConversationRequest): Promise<ConversationDetail> {
     if (data.type === 'group' && !data.name) {
-      throw new HttpError(400, 'Group conversations require a name')
+      throw HTTP_ERRORS.badRequest(CHAT_ERRORS.GROUP_NAME_REQUIRED)
     }
 
     if (data.participantIds.length === 0) {
-      throw new HttpError(400, 'At least one participant is required')
+      throw HTTP_ERRORS.badRequest(CHAT_ERRORS.PARTICIPANT_REQUIRED)
     }
 
     return this.repo.createConversation(data)
@@ -33,7 +39,7 @@ export class ChatUsecase {
 
   async listConversationsForUser(userId: string): Promise<ConversationDetail[]> {
     if (!userId) {
-      throw new HttpError(400, 'userId is required')
+      throw HTTP_ERRORS.required('userId')
     }
 
     return this.repo.listConversationsForUser(userId)
@@ -42,7 +48,7 @@ export class ChatUsecase {
   async getConversation(conversationId: string): Promise<ConversationDetail> {
     const conversation = await this.repo.getConversation(conversationId)
     if (!conversation) {
-      throw new HttpError(404, 'Conversation not found')
+      throw HTTP_ERRORS.notFound('Conversation')
     }
 
     return conversation
@@ -57,7 +63,7 @@ export class ChatUsecase {
     await this.getConversation(conversationId)
     const participant = await this.repo.markParticipantLeft(conversationId, userId)
     if (!participant) {
-      throw new HttpError(404, 'Participant not found')
+      throw HTTP_ERRORS.notFound('Participant')
     }
     await this.createSystemMessage(conversationId, { systemEvent: 'leave', senderUserId: null })
     return participant
@@ -70,7 +76,7 @@ export class ChatUsecase {
   ): Promise<Message[]> {
     const participant = await this.ensureActiveParticipant(conversationId, userId)
     if (!participant) {
-      throw new HttpError(403, 'You are not a participant in this conversation')
+      throw HTTP_ERRORS.forbidden(CHAT_ERRORS.NOT_PARTICIPANT)
     }
 
     return this.repo.listMessages(conversationId, options)
@@ -82,7 +88,7 @@ export class ChatUsecase {
     if (payload.replyToMessageId) {
       const referenced = await this.repo.findMessageById(payload.replyToMessageId)
       if (!referenced || referenced.conversationId !== conversationId) {
-        throw new HttpError(400, 'Referenced message must belong to the same conversation')
+        throw HTTP_ERRORS.badRequest(CHAT_ERRORS.MESSAGE_CONVERSATION_MISMATCH)
       }
     }
 
@@ -92,7 +98,7 @@ export class ChatUsecase {
   async addReaction(messageId: string, userId: string, emoji: string): Promise<Reaction> {
     const message = await this.repo.findMessageById(messageId)
     if (!message) {
-      throw new HttpError(404, 'Message not found')
+      throw HTTP_ERRORS.notFound('Message')
     }
 
     await this.ensureActiveParticipant(message.conversationId, userId)
@@ -103,14 +109,14 @@ export class ChatUsecase {
   async removeReaction(messageId: string, emoji: string, userId: string) {
     const message = await this.repo.findMessageById(messageId)
     if (!message) {
-      throw new HttpError(404, 'Message not found')
+      throw HTTP_ERRORS.notFound('Message')
     }
 
     await this.ensureActiveParticipant(message.conversationId, userId)
 
     const removed = await this.repo.removeReaction(messageId, emoji, userId)
     if (!removed) {
-      throw new HttpError(404, 'Reaction not found')
+      throw HTTP_ERRORS.notFound('Reaction')
     }
 
     return removed
@@ -119,7 +125,7 @@ export class ChatUsecase {
   async listReactions(messageId: string): Promise<Reaction[]> {
     const message = await this.repo.findMessageById(messageId)
     if (!message) {
-      throw new HttpError(404, 'Message not found')
+      throw HTTP_ERRORS.notFound('Message')
     }
 
     return this.repo.listReactions(messageId)
@@ -134,7 +140,7 @@ export class ChatUsecase {
 
     const message = await this.repo.findMessageById(lastReadMessageId)
     if (!message || message.conversationId !== conversationId) {
-      throw new HttpError(400, 'lastReadMessageId must belong to the conversation')
+      throw HTTP_ERRORS.badRequest(CHAT_ERRORS.LAST_READ_MESSAGE_MISMATCH)
     }
 
     return this.repo.updateConversationRead(conversationId, { userId, lastReadMessageId })
@@ -148,7 +154,7 @@ export class ChatUsecase {
   async addBookmark(messageId: string, userId: string): Promise<Bookmark> {
     const message = await this.repo.findMessageById(messageId)
     if (!message) {
-      throw new HttpError(404, 'Message not found')
+      throw HTTP_ERRORS.notFound('Message')
     }
 
     await this.ensureActiveParticipant(message.conversationId, userId)
@@ -159,14 +165,14 @@ export class ChatUsecase {
   async removeBookmark(messageId: string, userId: string): Promise<Bookmark> {
     const message = await this.repo.findMessageById(messageId)
     if (!message) {
-      throw new HttpError(404, 'Message not found')
+      throw HTTP_ERRORS.notFound('Message')
     }
 
     await this.ensureActiveParticipant(message.conversationId, userId)
 
     const removed = await this.repo.removeBookmark(messageId, userId)
     if (!removed) {
-      throw new HttpError(404, 'Bookmark not found')
+      throw HTTP_ERRORS.notFound('Bookmark')
     }
 
     return removed
@@ -174,7 +180,7 @@ export class ChatUsecase {
 
   async listBookmarks(userId: string): Promise<BookmarkListItem[]> {
     if (!userId) {
-      throw new HttpError(400, 'userId is required')
+      throw HTTP_ERRORS.required('userId')
     }
 
     return this.repo.listBookmarks(userId)
@@ -183,7 +189,7 @@ export class ChatUsecase {
   async deleteMessage(messageId: string, requestUserId: string): Promise<void> {
     const message = await this.repo.findMessageById(messageId)
     if (!message) {
-      throw new HttpError(404, 'Message not found')
+      throw HTTP_ERRORS.notFound('Message')
     }
 
     // Check if the user is the sender of the message
@@ -191,7 +197,7 @@ export class ChatUsecase {
       // Check if the user is an admin of the conversation
       const participant = await this.repo.findParticipant(message.conversationId, requestUserId)
       if (!participant || participant.role !== 'admin') {
-        throw new HttpError(403, 'You are not authorized to delete this message')
+        throw HTTP_ERRORS.forbidden(CHAT_ERRORS.DELETE_MESSAGE_UNAUTHORIZED)
       }
     }
 
@@ -211,7 +217,7 @@ export class ChatUsecase {
   ): Promise<Participant | null> {
     const participant = await this.repo.findParticipant(conversationId, userId)
     if (!participant || participant.leftAt) {
-      throw new HttpError(403, 'User is not an active participant in this conversation')
+      throw HTTP_ERRORS.forbidden(CHAT_ERRORS.NOT_ACTIVE_PARTICIPANT)
     }
 
     return participant

@@ -147,19 +147,20 @@ export const postConversationsIdParticipantsBody = zod.object({
 });
 
 /**
- * @summary Remove participant from conversation
+ * Mark the authenticated user as having left the conversation
+ * @summary Leave a conversation
  */
-export const deleteConversationsIdParticipantsUserIdParams = zod.object({
+export const postConversationsIdLeaveParams = zod.object({
   id: zod.string().uuid(),
-  userId: zod.string().uuid(),
 });
 
-export const deleteConversationsIdParticipantsUserIdResponseUserIdAliasMin = 3;
-export const deleteConversationsIdParticipantsUserIdResponseUserIdAliasMax = 30;
-export const deleteConversationsIdParticipantsUserIdResponseUserIdAliasRegExp =
-  new RegExp("^[a-z0-9][a-z0-9._-]*[a-z0-9]$");
+export const postConversationsIdLeaveResponseUserIdAliasMin = 3;
+export const postConversationsIdLeaveResponseUserIdAliasMax = 30;
+export const postConversationsIdLeaveResponseUserIdAliasRegExp = new RegExp(
+  "^[a-z0-9][a-z0-9._-]*[a-z0-9]$"
+);
 
-export const deleteConversationsIdParticipantsUserIdResponse = zod.object({
+export const postConversationsIdLeaveResponse = zod.object({
   id: zod.string().uuid(),
   conversationId: zod.string().uuid(),
   userId: zod.string(),
@@ -170,9 +171,9 @@ export const deleteConversationsIdParticipantsUserIdResponse = zod.object({
     id: zod.string().uuid(),
     idAlias: zod
       .string()
-      .min(deleteConversationsIdParticipantsUserIdResponseUserIdAliasMin)
-      .max(deleteConversationsIdParticipantsUserIdResponseUserIdAliasMax)
-      .regex(deleteConversationsIdParticipantsUserIdResponseUserIdAliasRegExp)
+      .min(postConversationsIdLeaveResponseUserIdAliasMin)
+      .max(postConversationsIdLeaveResponseUserIdAliasMax)
+      .regex(postConversationsIdLeaveResponseUserIdAliasRegExp)
       .describe(
         "Unique human-readable identifier for login and display. Must start and end with lowercase letter or number. Only lowercase letters, numbers, dots, underscores, and hyphens allowed. No spaces."
       ),
@@ -439,22 +440,17 @@ export const getUsersUserIdResponse = zod.object({
 });
 
 /**
- * @summary List bookmarks for a user
+ * Get all bookmarks for the currently authenticated user
+ * @summary List bookmarks for authenticated user
  */
-export const getUsersUserIdBookmarksParams = zod.object({
-  userId: zod.string().uuid(),
-});
-
-export const getUsersUserIdBookmarksResponseItem = zod.object({
+export const getBookmarksResponseItem = zod.object({
   messageId: zod.string().uuid(),
   conversationId: zod.string().uuid(),
   text: zod.string().nullish(),
   createdAt: zod.string().datetime({}),
   messageCreatedAt: zod.string().datetime({}),
 });
-export const getUsersUserIdBookmarksResponse = zod.array(
-  getUsersUserIdBookmarksResponseItem
-);
+export const getBookmarksResponse = zod.array(getBookmarksResponseItem);
 
 /**
  * Authenticate and retrieve user information by their unique ID alias
@@ -685,7 +681,7 @@ export { postUsersBody as CreateUserRequestSchema };
 export type HealthResponse = zod.infer<typeof getHealthResponse>;
 export type Item = zod.infer<typeof getItemsResponseItem>;
 export type User = zod.infer<typeof postUsersBody> & { id: string; createdAt: string };
-export type Participant = zod.infer<typeof deleteConversationsIdParticipantsUserIdResponse>;
+export type Participant = zod.infer<typeof postConversationsIdLeaveResponse>;
 export type ConversationDetail = zod.infer<typeof getConversationsIdResponse>;
 export type Message = zod.infer<typeof getConversationsIdMessagesResponseItem>;
 export type Reaction = zod.infer<typeof deleteMessagesIdReactionsEmojiResponse>;
@@ -697,7 +693,7 @@ export type Bookmark = {
   userId: string;
   createdAt: string;
 };
-export type BookmarkListItem = zod.infer<typeof getUsersUserIdBookmarksResponseItem>;
+export type BookmarkListItem = zod.infer<typeof getBookmarksResponseItem>;
 export type CreateConversationRequest = zod.infer<typeof postConversationsBody>;
 export type AddParticipantRequest = zod.infer<typeof postConversationsIdParticipantsBody>;
 export type SendMessageRequest = zod.infer<typeof postConversationsIdMessagesBody>;

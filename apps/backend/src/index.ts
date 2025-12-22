@@ -6,6 +6,7 @@ import healthRouter from './routes/health'
 import conversationsRouter from './routes/conversations'
 import messagesRouter from './routes/messages'
 import usersRouter from './routes/users'
+import bookmarksRouter from './routes/bookmarks'
 import authExampleRouter from './routes/auth-example'
 import adminRouter from './routes/admin'
 
@@ -41,6 +42,7 @@ app.route('/health', healthRouter)
 app.route('/conversations', conversationsRouter)
 app.route('/messages', messagesRouter)
 app.route('/users', usersRouter)
+app.route('/bookmarks', bookmarksRouter)
 
 // Admin routes
 app.route('/admin', adminRouter)

@@ -7,7 +7,7 @@ import {
   getConversationsIdResponse,
   getConversationsResponseItem,
   getConversationsIdMessagesResponseItem,
-  deleteConversationsIdParticipantsUserIdResponse,
+  postConversationsIdLeaveResponse,
   postConversationsIdReadResponse,
   getConversationsIdUnreadCountResponse,
   getUsersUserIdResponse,
@@ -312,7 +312,7 @@ describe('Conversations API', () => {
       const participant = await response.json()
 
       // Zod schema validation
-      expectValidZodSchema(deleteConversationsIdParticipantsUserIdResponse, participant, 'participant')
+      expectValidZodSchema(postConversationsIdLeaveResponse, participant, 'participant')
 
       // Business logic assertions
       expect(participant.conversationId).toBe(conversation.id)
@@ -383,13 +383,13 @@ describe('Conversations API', () => {
     })
   })
 
-  describe('DELETE /conversations/:id/participants/:userId', () => {
-    it('removes a participant from conversation', async () => {
+  describe('POST /conversations/:id/leave', () => {
+    it('allows authenticated user to leave conversation', async () => {
       const { chatUser: user1, headers: user1Headers } = await createAuthUserWithChatUser('user1', 'user1@test.com')
-      const user2 = await createUser('User 2', 'user2')
+      const { chatUser: user2, headers: user2Headers } = await createAuthUserWithChatUser('user2', 'user2@test.com')
       const user3 = await createUser('User 3', 'user3')
 
-      // Create a conversation
+      // Create a conversation with user1
       const createResponse = await app.request('/conversations', {
         method: 'POST',
         headers: { ...user1Headers, 'Content-Type': 'application/json' },
@@ -402,46 +402,47 @@ describe('Conversations API', () => {
 
       const conversation = await createResponse.json()
 
-      // Remove participant
+      // User2 leaves the conversation
       const response = await app.request(
-        `/conversations/${conversation.id}/participants/${user3.id}`,
+        `/conversations/${conversation.id}/leave`,
         {
-          method: 'DELETE',
-          headers: user1Headers
+          method: 'POST',
+          headers: user2Headers
         }
       )
 
       expect(response.status).toBe(200)
 
       const participant = await response.json()
-      expect(participant.userId).toBe(user3.id)
+      expect(participant.userId).toBe(user2.id)
       expect(participant.conversationId).toBe(conversation.id)
       expect(participant).toHaveProperty('leftAt')
       expect(participant.leftAt).not.toBeNull()
     })
 
-    it('returns 404 for non-existent participant', async () => {
+    it('returns 403 when user is not a participant', async () => {
       const { chatUser: user1, headers: user1Headers } = await createAuthUserWithChatUser('user1', 'user1@test.com')
-      const user2 = await createUser('User 2', 'user2')
+      const { chatUser: user2, headers: user2Headers } = await createAuthUserWithChatUser('user2', 'user2@test.com')
+      const user3 = await createUser('User 3', 'user3')
 
-      // Create a conversation
+      // Create a conversation without user2
       const createResponse = await app.request('/conversations', {
         method: 'POST',
         headers: { ...user1Headers, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: 'direct',
-          participantIds: [user1.id, user2.id],
+          participantIds: [user1.id, user3.id],
         }),
       })
 
       const conversation = await createResponse.json()
 
-      // Try to remove non-existent participant
+      // User2 tries to leave a conversation they're not in
       const response = await app.request(
-        `/conversations/${conversation.id}/participants/00000000-0000-0000-0000-000000000000`,
+        `/conversations/${conversation.id}/leave`,
         {
-          method: 'DELETE',
-          headers: user1Headers
+          method: 'POST',
+          headers: user2Headers
         }
       )
 

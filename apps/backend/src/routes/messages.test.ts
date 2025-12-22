@@ -5,7 +5,7 @@ import { expectMatchesSnapshot } from '../__tests__/helpers/snapshotHelpers'
 import {
   deleteMessagesIdReactionsEmojiResponse,
   deleteMessagesIdBookmarksResponse,
-  getUsersUserIdBookmarksResponseItem,
+  getBookmarksResponseItem,
   getMessagesIdReactionsResponse,
 } from 'openapi'
 import zod from 'zod'
@@ -511,8 +511,8 @@ describe('Messages API', () => {
     })
   })
 
-  describe('GET /users/:userId/bookmarks', () => {
-    it('returns list of bookmarks for a user', async () => {
+  describe('GET /bookmarks', () => {
+    it('returns list of bookmarks for authenticated user', async () => {
       const { chatUser: user1, headers: user1Headers } = await createAuthUserWithChatUser('user1', 'user1@test.com')
       const user2 = await createUser('User 2', 'user2')
 
@@ -533,8 +533,8 @@ describe('Messages API', () => {
         body: JSON.stringify({}),
       })
 
-      // Get bookmarks list (user1 viewing their own bookmarks)
-      const response = await app.request(`/users/${user1.id}/bookmarks`, {
+      // Get bookmarks list (authenticated user's bookmarks)
+      const response = await app.request('/bookmarks', {
         headers: user1Headers,
       })
 
@@ -545,13 +545,13 @@ describe('Messages API', () => {
       expect(bookmarks.length).toBeGreaterThanOrEqual(2)
 
       // Zod schema validation for all bookmarks in the array
-      expectValidZodSchemaArray(getUsersUserIdBookmarksResponseItem, bookmarks, 'bookmarks')
+      expectValidZodSchemaArray(getBookmarksResponseItem, bookmarks, 'bookmarks')
     })
 
     it('returns empty array when user has no bookmarks', async () => {
       const { chatUser: user, headers } = await createAuthUserWithChatUser('user1', 'user1@test.com')
 
-      const response = await app.request(`/users/${user.id}/bookmarks`, {
+      const response = await app.request('/bookmarks', {
         headers,
       })
 

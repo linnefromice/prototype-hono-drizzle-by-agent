@@ -93,11 +93,12 @@ router.post('/:id/participants', requireAuth, async c => {
   }
 })
 
-router.delete('/:id/participants/:userId', requireAuth, async c => {
+router.post('/:id/leave', requireAuth, async c => {
   const conversationId = c.req.param('id')
-  const userId = c.req.param('userId')
+  const authUser = c.get('authUser')
   try {
     const db = await getDbClient(c)
+    const userId = await getChatUserId(db, authUser!)
     const chatUsecase = new ChatUsecase(new DrizzleChatRepository(db))
     const participant = await chatUsecase.markParticipantLeft(conversationId, userId)
     return c.json(participant)

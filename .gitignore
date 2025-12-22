@@ -12,3 +12,6 @@ apps/backend/coverage
 
 # Serena MCP server cache
 .serena/
+
+# Wrangler local files
+.wrangler/

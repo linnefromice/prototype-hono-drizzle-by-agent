@@ -55,7 +55,7 @@ describe('UserUsecase', () => {
           idAlias: 'empty',
           name: '',
         })
-      ).rejects.toThrow('User name is required')
+      ).rejects.toThrow('name is required')
     })
 
     it('throws an error when name is only whitespace', async () => {
@@ -64,7 +64,7 @@ describe('UserUsecase', () => {
           idAlias: 'whitespace',
           name: '   ',
         })
-      ).rejects.toThrow('User name is required')
+      ).rejects.toThrow('name is required')
     })
 
     it('handles null avatarUrl', async () => {
