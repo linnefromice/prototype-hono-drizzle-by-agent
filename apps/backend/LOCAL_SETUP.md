@@ -111,11 +111,24 @@ npm run db:studio
 
 ### シードデータ投入がタイムアウトする場合
 
-バッチサイズを小さくして実行:
+Cloudflare Workers の CPU 時間制限により、認証ユーザー作成時のパスワードハッシュ化が制限にかかる場合があります。
+
+**デフォルトバッチサイズ**: 3ユーザー/リクエスト（1-5の範囲で調整可能）
+
+バッチサイズを調整して実行:
 
 ```bash
-curl -X POST "http://localhost:8787/admin/seed-auth-users-by-app-users?batchSize=3"
+# デフォルト（batchSize=3）で実行
+curl -X POST "http://localhost:8787/admin/seed-auth-users-by-app-users"
+
+# バッチサイズを指定（1-5の範囲）
+curl -X POST "http://localhost:8787/admin/seed-auth-users-by-app-users?batchSize=2"
 ```
+
+レスポンスに含まれる `performance` メトリクスで処理時間を確認できます:
+- `totalTimeMs`: リクエスト全体の処理時間
+- `avgUserProcessingMs`: ユーザーあたりの平均処理時間
+- `maxUserProcessingMs`: 最大処理時間
 
 `remaining` が 0 になるまで繰り返し実行してください。
 

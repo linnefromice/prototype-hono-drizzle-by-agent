@@ -26,6 +26,8 @@ type SeedSummary = {
 }
 
 export async function seedAuthUsersByAppUsers(c: Context<{ Bindings: Env; Variables: AuthVariables }>) {
+  const startTime = Date.now()
+
   // 環境チェック
   const environment = c.env?.ENVIRONMENT || 'development'
   if (environment === 'production') {
@@ -41,9 +43,10 @@ export async function seedAuthUsersByAppUsers(c: Context<{ Bindings: Env; Variab
     const db = await getDbClient(c)
 
     // バッチサイズ制限（Cloudflare Workersのタイムアウト対策）
+    // デフォルトを3に変更: CPU時間制限を考慮して小さめに設定
     const batchSizeParam = c.req.query('batchSize')
-    const batchSize = batchSizeParam ? parseInt(batchSizeParam, 10) : 5
-    const limitedBatchSize = Math.min(Math.max(batchSize, 1), 10) // 1-10の範囲に制限
+    const batchSize = batchSizeParam ? parseInt(batchSizeParam, 10) : 3
+    const limitedBatchSize = Math.min(Math.max(batchSize, 1), 5) // 1-5の範囲に制限 (10から5に変更)
 
     const usersWithoutAuth = await db
       .select()
@@ -71,8 +74,10 @@ export async function seedAuthUsersByAppUsers(c: Context<{ Bindings: Env; Variab
     let skippedCount = 0
     let failedCount = 0
     let syncErrorCount = 0
+    const processingTimes: number[] = []
 
     for (const user of usersWithoutAuth) {
+      const userStartTime = Date.now()
       try {
         // Better Auth で auth_user 作成
         const result = await auth.api.signUpEmail({
@@ -141,6 +146,9 @@ export async function seedAuthUsersByAppUsers(c: Context<{ Bindings: Env; Variab
           })
           failedCount++
         }
+      } finally {
+        const userProcessingTime = Date.now() - userStartTime
+        processingTimes.push(userProcessingTime)
       }
     }
 
@@ -150,6 +158,13 @@ export async function seedAuthUsersByAppUsers(c: Context<{ Bindings: Env; Variab
       .from(chatUsers)
       .where(isNull(chatUsers.authUserId))
       .all()
+
+    // パフォーマンス統計を計算
+    const totalTime = Date.now() - startTime
+    const avgProcessingTime = processingTimes.length > 0
+      ? processingTimes.reduce((a, b) => a + b, 0) / processingTimes.length
+      : 0
+    const maxProcessingTime = processingTimes.length > 0 ? Math.max(...processingTimes) : 0
 
     return c.json({
       success: true,
@@ -164,6 +179,12 @@ export async function seedAuthUsersByAppUsers(c: Context<{ Bindings: Env; Variab
       message: remainingUsers.length > 0
         ? `${remainingUsers.length} users still need auth setup. Run again to continue.`
         : 'All users have auth setup complete!',
+      performance: {
+        totalTimeMs: totalTime,
+        avgUserProcessingMs: Math.round(avgProcessingTime),
+        maxUserProcessingMs: maxProcessingTime,
+        batchSize: limitedBatchSize
+      },
       results
     })
 
