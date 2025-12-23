@@ -1,5 +1,4 @@
 import type { Context } from 'hono'
-import type { StatusCode } from 'hono/utils/http-status'
 import { ZodError } from 'zod'
 import type { ErrorResponse, ValidationErrorResponse } from '../types/errors'
 import { HttpError } from '../utils/errors'
@@ -16,9 +15,7 @@ export const errorHandler = (err: Error, c: Context) => {
     const response: ErrorResponse = {
       message: err.message,
     }
-    // Use StatusCode type assertion for type safety
-    // This is safer than 'as any' and ensures the status code is valid
-    return c.json(response, err.status as StatusCode)
+    return c.json(response, err.status as any)
   }
 
   // Handle Zod validation errors
