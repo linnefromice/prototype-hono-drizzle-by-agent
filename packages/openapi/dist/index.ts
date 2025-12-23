@@ -11,6 +11,10 @@ import zod from "zod";
  */
 export const getHealthResponse = zod.object({
   ok: zod.boolean(),
+  database: zod.object({
+    status: zod.enum(["healthy", "unhealthy"]),
+    message: zod.string().optional(),
+  }),
 });
 
 /**

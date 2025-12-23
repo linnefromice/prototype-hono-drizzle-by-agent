@@ -73,3 +73,5 @@ export * from "./userProfileChat";
 export * from "./userProfileChatAllOf";
 export * from "./validationErrorResponse";
 export * from "./validationErrorResponseDetailsItem";
+export * from "./healthResponseDatabase";
+export * from "./healthResponseDatabaseStatus";

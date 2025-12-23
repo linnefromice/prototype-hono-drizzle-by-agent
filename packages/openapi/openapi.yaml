@@ -10,7 +10,13 @@ paths:
       summary: Health check
       responses:
         '200':
-          description: Service health status
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Service is unhealthy (database connection failed)
           content:
             application/json:
               schema:
@@ -690,8 +696,19 @@ components:
       properties:
         ok:
           type: boolean
+        database:
+          type: object
+          properties:
+            status:
+              type: string
+              enum: [healthy, unhealthy]
+            message:
+              type: string
+          required:
+            - status
       required:
         - ok
+        - database
     Item:
       type: object
       properties:
